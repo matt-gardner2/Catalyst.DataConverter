@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2003
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catalyst.DataConverter", "DataConverter\Catalyst.DataConverter.csproj", "{49554669-B70D-4181-84A5-FF74C4E4DC19}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catalyst.DataConverter", "Catalyst.DataConverter\Catalyst.DataConverter.csproj", "{49554669-B70D-4181-84A5-FF74C4E4DC19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{578C9D1C-BC11-4CF8-A1D3-4ABC3534EDA7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataConverter.Tests", "DataConverter.Tests\DataConverter.Tests.csproj", "{578C9D1C-BC11-4CF8-A1D3-4ABC3534EDA7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
