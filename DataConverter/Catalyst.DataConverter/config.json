@@ -1,0 +1,19 @@
+﻿{
+    'ConnectionString' : 'server=HC2260;initial catalog=EDWAdmin;Trusted_Connection=True;',
+    'Url' : 'https://HC2260.hqcatalyst.local/DataProcessingService/v1/BatchExecutions',
+    'MaximumEntitiesToLoad' : 1000,
+    'EntitiesPerBatch' : 100,
+    'EntitiesPerUploadFile' : 100,
+    'LocalSaveFolder' : 'C:\\Catalyst\\databus',
+    'DropAndReloadIndex' : false,
+    'WriteTemporaryFilesToDisk' : true,
+    'WriteDetailedTemporaryFilesToDisk' : true,
+    'CompressFiles' : false,
+    'UploadToElasticSearch' : true,
+    'Index' : 'Patients2',
+    'Alias' : 'patients',
+    'EntityType' : 'patient',
+    'TopLevelKeyColumn' : 'BatchDefinitionId',
+    'UseMultipleThreads' : false,
+    'KeepTemporaryLookupColumnsInOutput' : true
+}

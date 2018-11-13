@@ -150,6 +150,29 @@ namespace UnitTestProject1
             Assert.Equal("{\"identifier\":[],\"name\":[],\"communication\":[],\"us-core-race\":{\"extension\":[]},\"condition\":[{\"category\":{},\"code\":{}}]}", model);
         }
 
+        [Fact]
+        public async Task GetConfigReturnsConfig()
+        {
+            var helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
+            var config = await helper.GetConfig();
+
+            Assert.Equal("server=HC2260;initial catalog=EDWAdmin;Trusted_Connection=True;", config.ConnectionString);
+            Assert.Equal("https://HC2260.hqcatalyst.local/DataProcessingService/v1/BatchExecutions", config.Url);
+            Assert.Equal(1000, config.MaximumEntitiesToLoad);
+            Assert.Equal(100, config.EntitiesPerBatch);
+            Assert.Equal(100, config.EntitiesPerUploadFile);
+            Assert.Equal("C:\\Catalyst\\databus", config.LocalSaveFolder);
+            Assert.False(config.DropAndReloadIndex);
+            Assert.True(config.WriteTemporaryFilesToDisk);
+            Assert.False(config.CompressFiles);
+            Assert.True(config.UploadToElasticSearch);
+            Assert.Equal("Patients2", config.Index);
+            Assert.Equal("patient", config.EntityType);
+            Assert.Equal("BatchDefinitionId", config.TopLevelKeyColumn);
+            Assert.False(config.UseMultipleThreads);
+            Assert.True(config.KeepTemporaryLookupColumnsInOutput);
+        }
+
         private void SetupExampleModelGetEntity()
         {
             this.mockMetaDataService = new Mock<IMetadataServiceClient>();

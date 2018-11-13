@@ -183,10 +183,12 @@
     <Compile Include="HierarchicalDataTransformer.cs" />
     <Compile Include="HierarchicalDataTransformerHelper.cs" />
     <Compile Include="IHierarchicalDataTransformerHelper.cs" />
-    <Compile Include="ModelStringBuilder.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="config.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

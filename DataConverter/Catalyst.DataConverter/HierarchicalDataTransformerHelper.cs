@@ -21,6 +21,9 @@ namespace DataConverter
     using Catalyst.DataProcessing.Shared.Utilities.Client;
     using Fabric.Databus.Client;
     using Fabric.Databus.Config;
+
+    using Newtonsoft.Json;
+
     using Unity;
 
     /// <summary>
@@ -216,29 +219,45 @@ namespace DataConverter
         public async Task<QueryConfig> GetConfig()
         {
             // TODO: Replace this with actual config
-            return await Task.Run(
-                       () => new QueryConfig
-                                 {
-                                     ConnectionString =
-                                         "server=HC2260;initial catalog=EDWAdmin;Trusted_Connection=True;",
-                                     Url =
-                                         "https://HC2260.hqcatalyst.local/DataProcessingService/v1/BatchExecutions",
-                                     MaximumEntitiesToLoad = 1000,
-                                     EntitiesPerBatch = 100,
-                                     EntitiesPerUploadFile = 100,
-                                     LocalSaveFolder = @"C:\Catalyst\databus",
-                                     DropAndReloadIndex = false,
-                                     WriteTemporaryFilesToDisk = true,
-                                     WriteDetailedTemporaryFilesToDisk = true,
-                                     CompressFiles = false,
-                                     UploadToElasticSearch = true,
-                                     Index = "Patients2",
-                                     Alias = "patients",
-                                     EntityType = "patient",
-                                     TopLevelKeyColumn = "BatchDefinitionId",
-                                     UseMultipleThreads = false,
-                                     KeepTemporaryLookupColumnsInOutput = true
-                                 });
+            return await Task.Run(() => this.GetQueryConfigFromJsonFile());
+        }
+
+        /// <summary>
+        /// The get config json file.
+        /// </summary>
+        /// <param name="filePath">
+        /// The file path.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        private QueryConfig GetQueryConfigFromJsonFile(string filePath = "config.json")
+        {
+            var json = System.IO.File.ReadAllText(filePath);
+            var deserialzed = (dynamic)JsonConvert.DeserializeObject(json);
+
+            var queryConfig = new QueryConfig
+                                  {
+                                      ConnectionString = deserialzed.ConnectionString,
+                                      Url = deserialzed.Url,
+                                      MaximumEntitiesToLoad = deserialzed.MaximumEntitiesToLoad,
+                                      EntitiesPerBatch = deserialzed.EntitiesPerBatch,
+                                      EntitiesPerUploadFile = deserialzed.EntitiesPerUploadFile,
+                                      LocalSaveFolder = deserialzed.LocalSaveFolder,
+                                      DropAndReloadIndex = deserialzed.DropAndReloadIndex,
+                                      WriteTemporaryFilesToDisk = deserialzed.WriteTemporaryFilesToDisk,
+                                      WriteDetailedTemporaryFilesToDisk = deserialzed.WriteDetailedTemporaryFilesToDisk,
+                                      CompressFiles = deserialzed.CompressFiles,
+                                      UploadToElasticSearch = deserialzed.UploadToElasticSearch,
+                                      Index = deserialzed.Index,
+                                      Alias = deserialzed.Alias,
+                                      EntityType = deserialzed.EntityType,
+                                      TopLevelKeyColumn = deserialzed.TopLevelKeyColumn,
+                                      UseMultipleThreads = deserialzed.UseMultipleThreads,
+                                      KeepTemporaryLookupColumnsInOutput = deserialzed.KeepTemporaryLookupColumnsInOutput,
+                                  };
+
+            return queryConfig;
         }
 
         /// <summary>
