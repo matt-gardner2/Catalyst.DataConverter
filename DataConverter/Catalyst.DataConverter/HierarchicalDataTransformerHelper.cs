@@ -1,5 +1,5 @@
 ﻿// --------------------------------------------------------------------------------------------------------------------
-// <copyright file="IHierarchicalDataTransformer.cs" company="Health Catalyst">
+// <copyright file="HierarchicalDataTransformerHelper.cs" company="Health Catalyst">
 //   Health Catalyst Copyright 2018
 // </copyright>
 // <summary>
