@@ -94,10 +94,13 @@ namespace DataConverter
         /// <param name="isFirst">
         /// The is first.
         /// </param>
+        /// <param name="isObject">
+        /// The is Object.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst);
+        Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject);
 
         /// <summary>
         /// The get config.

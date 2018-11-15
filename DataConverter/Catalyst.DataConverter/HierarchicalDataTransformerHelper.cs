@@ -91,6 +91,8 @@ namespace DataConverter
             var entity = await this.GetEntityFromBinding(binding);
             if (entity != null)
             {
+                // TODO: Get the object relationship from the binding for the key levels 
+                // TODO: 
                 currentDataSources.Add(new DataSource { Path = entity.EntityName, Sql = this.GetSqlFromEntity(entity) });
             }
 
@@ -136,7 +138,7 @@ namespace DataConverter
         public async Task<string> GenerateDataModel(Binding binding, Binding[] bindings)
         {
             var sb = new StringBuilder();
-            await this.GetChildText(sb, binding, bindings, true);
+            await this.GetChildText(sb, binding, bindings, true, true);
             var serialized = sb.ToString();
             serialized = serialized.Replace(",}", "}");
             return serialized;
@@ -157,14 +159,17 @@ namespace DataConverter
         /// <param name="isFirst">
         /// The is first.
         /// </param>
+        /// <param name="isObject">
+        /// The is Object.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        public async Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst)
+        public async Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject)
         {
             var childObjectRelationships = this.GetObjectRelationships(binding);
             var hasChildren = childObjectRelationships.Count > 0;
-            var isObject = this.GetJsonPropertyType(binding) != "Array";
+
             var parameterName = $"\"{await this.GetEntityName(binding)}\":";
 
             if (isFirst)
@@ -194,7 +199,8 @@ namespace DataConverter
                 if (childObjectRelationship != null)
                 {
                     var childBinding = this.GetMatchingChild(bindings, childObjectRelationship.ChildObjectId);
-                    await this.GetChildText(builder, childBinding, bindings, false);
+                    var childIsObject = this.GetCardinalityFromObjectReference(childObjectRelationship) != "Array";
+                    await this.GetChildText(builder, childBinding, bindings, false, childIsObject);
                 }
             }
 
@@ -261,17 +267,18 @@ namespace DataConverter
         }
 
         /// <summary>
-        /// The get json property type.
+        /// The get cardinality from object reference.
         /// </summary>
-        /// <param name="binding">
-        /// The binding.
+        /// <param name="objectReference">
+        /// The object reference.
         /// </param>
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        private string GetJsonPropertyType(Binding binding)
+        private string GetCardinalityFromObjectReference(ObjectReference objectReference)
         {
-            return this.GetAttributeValueFromBinding(binding, "JSONPropertyType");
+            return objectReference.AttributeValues.Where(x => x.AttributeName == "Cardinality")
+                .Select(x => x.AttributeValue).FirstOrDefault();
         }
 
         /// <summary>
@@ -444,9 +451,16 @@ namespace DataConverter
         /// </returns>
         private string GetSqlFromEntity(Entity entity)
         {
+            // TODO: get key levels from parentKeyfields attribute on object relationship
             if (entity != null)
             {
-                return $"select * from [{GetDatabaseNameFromEntity(entity)}].[{GetSchemaNameFromEntity(entity)}].[{GetTableNameFromEntity(entity)}]";
+                var columns = "*";
+                if (entity.Fields != null && entity.Fields.Count > 0)
+                {
+                    columns = string.Join(",", entity.Fields.Select(x => x.FieldName));
+                }
+                
+                return $"select {columns} from [{this.GetDatabaseNameFromEntity(entity)}].[{this.GetSchemaNameFromEntity(entity)}].[{this.GetTableNameFromEntity(entity)}]";
             }
 
             return null;

@@ -173,6 +173,13 @@ namespace UnitTestProject1
             Assert.True(config.KeepTemporaryLookupColumnsInOutput);
         }
 
+        [Fact]
+        public async Task KeyLevelsWork()
+        {
+
+        }
+
+        #region helper methods
         private void SetupExampleModelGetEntity()
         {
             this.mockMetaDataService = new Mock<IMetadataServiceClient>();
@@ -418,35 +425,32 @@ namespace UnitTestProject1
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 1, SourceAliasName = "identifier" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Array" } },
                                   Id = 1
                               };
             bindings[1] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 2, SourceAliasName = "name" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Array" } },
                                   Id = 2
                               };
             bindings[2] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 3, SourceAliasName = "communication" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Array" } },
                                   Id = 3
                               };
             bindings[3] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 4, SourceAliasName = "us-core-race" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
                                   Id = 4,
                                   ObjectRelationships =
                                       {
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 5,
-                                                  ChildObjectType = "binding"
+                                                  ChildObjectType = "binding",
+                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                               }
                                       }
             };
@@ -454,26 +458,26 @@ namespace UnitTestProject1
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 5, SourceAliasName = "extension" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Array" } },
                                   Id = 5
-                              };
+            };
             bindings[5] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 6, SourceAliasName = "condition" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Array" } },
                                   Id = 6,
                                   ObjectRelationships =
                                       {
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 7,
-                                                  ChildObjectType = "binding"
+                                                  ChildObjectType = "binding",
+                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                               },
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 8,
-                                                  ChildObjectType = "binding"
+                                                  ChildObjectType = "binding",
+                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                               }
                                       }
             };
@@ -481,14 +485,12 @@ namespace UnitTestProject1
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 7, SourceAliasName = "category" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
                                   Id = 7
             };
             bindings[7] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 8, SourceAliasName = "code" } },
-                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
                                   Id = 8
             };
             return bindings;
@@ -512,27 +514,32 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 1,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 2,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 3,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 4,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 6,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                        }
                                }
                        };
@@ -551,9 +558,9 @@ namespace UnitTestProject1
             bindings[0] = new Binding
             {
                 BindingType = "Nested",
+                Id = 1,
                 SourcedByEntities = { new SourceEntityReference { SourceEntityId = 2, SourceAliasName = "patient" } },
-                AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
-                Id = 1
+                ObjectRelationships = { new ObjectReference { AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } } } }
             };
             bindings[1] = new Binding
             {
@@ -561,7 +568,7 @@ namespace UnitTestProject1
                 BindingType = "Nested",
                 Id = 2,
                 SourcedByEntities = { new SourceEntityReference { SourceEntityId = 3, SourceAliasName = "identifier" } },
-                AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
+                ObjectRelationships = { new ObjectReference { AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } } } }
             };
             return bindings;
         }
@@ -580,14 +587,14 @@ namespace UnitTestProject1
             {
                 BindingType = "Nested",
                 SourcedByEntities = { new SourceEntityReference { SourceEntityId = 2, SourceAliasName = "patient" } },
-                AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Array" } },
                 Id = 1,
                 ObjectRelationships =
                                       {
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 2,
-                                                  ChildObjectType = "binding"
+                                                  ChildObjectType = "binding",
+                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                               }
                                       }
             };
@@ -597,13 +604,13 @@ namespace UnitTestProject1
                 BindingType = "Nested",
                 Id = 2,
                 SourcedByEntities = { new SourceEntityReference { SourceEntityId = 3, SourceAliasName = "identifier" } },
-                AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
                 ObjectRelationships =
                     {
                         new ObjectReference
                             {
                                 ChildObjectId = 3,
-                                ChildObjectType = "binding"
+                                ChildObjectType = "binding",
+                                AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                             }
                     }
             };
@@ -613,7 +620,7 @@ namespace UnitTestProject1
                 BindingType = "Nested",
                 Id = 3,
                 SourcedByEntities = { new SourceEntityReference { SourceEntityId = 4, SourceAliasName = "identifier" } },
-                AttributeValues = { new ObjectAttributeValue { AttributeName = "JSONPropertyType", AttributeValue = "Object" } },
+                ObjectRelationships = { new ObjectReference { AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } } } }
             };
             return bindings;
         }
@@ -642,12 +649,14 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 1,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 2,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                        }
                                }
                        };
@@ -677,7 +686,8 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 2,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } } 
                                        }
                                    
                                }
@@ -708,7 +718,8 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 1,
-                                           ChildObjectType = "binding"
+                                           ChildObjectType = "binding",
+                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                        }
                                    
                                }
@@ -763,5 +774,7 @@ namespace UnitTestProject1
                         }
             };
         }
+
+        #endregion
     }
 }
