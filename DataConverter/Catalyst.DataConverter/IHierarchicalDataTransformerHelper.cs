@@ -132,7 +132,5 @@ namespace DataConverter
         /// The <see cref="string"/>.
         /// </returns>
         string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings);
-
-        Task<JobData> TransformDataAsync(Binding binding, Entity entity);
     }
 }

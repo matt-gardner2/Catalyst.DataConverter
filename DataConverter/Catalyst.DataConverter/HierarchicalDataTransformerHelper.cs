@@ -33,23 +33,6 @@ namespace DataConverter
     /// </summary>
     public class HierarchicalDataTransformerHelper : IHierarchicalDataTransformerHelper
     {
-
-        public async Task<JobData> TransformDataAsync(
-            Binding binding,
-            Entity entity)
-        {
-            var bindings = await this.GetBindingsForEntityAsync(entity.Id);
-            var depthMap = new Dictionary<int, List<int>>();
-            var dataModel = this.GenerateDataModel(binding, bindings, out depthMap);
-            var dataSources = await this.GetDataSources(binding, bindings, new List<DataSource>(), depthMap);
-            QueryConfig config = await this.GetConfig();
-
-            var jobData = new JobData { DataModel = dataModel, MyDataSources = dataSources };
-
-            // this.RunDatabus(config, jobData);
-            return jobData;
-        }
-
         /// <summary>
         /// The service client.
         /// </summary>
