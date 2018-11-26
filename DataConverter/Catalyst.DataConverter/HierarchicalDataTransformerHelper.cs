@@ -49,6 +49,15 @@ namespace DataConverter
             this.serviceClient = serviceClient;
         }
 
+        /// <summary>
+        /// The run databus.
+        /// </summary>
+        /// <param name="config">
+        /// The config.
+        /// </param>
+        /// <param name="jobData">
+        /// The job data.
+        /// </param>
         public void RunDatabus(QueryConfig config, JobData jobData)
         {
             var job = new Job
@@ -60,6 +69,24 @@ namespace DataConverter
             runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
         }
 
+        /// <summary>
+        /// The get data sources.
+        /// </summary>
+        /// <param name="binding">
+        /// The binding.
+        /// </param>
+        /// <param name="bindings">
+        /// The bindings.
+        /// </param>
+        /// <param name="currentDataSources">
+        /// The current data sources.
+        /// </param>
+        /// <param name="depthMap">
+        /// The depth map.
+        /// </param>
+        /// <returns>
+        /// The <see cref="Task"/>.
+        /// </returns>
         public async Task<List<DataSource>> GetDataSources(
             Binding binding,
             Binding[] bindings,
@@ -70,8 +97,9 @@ namespace DataConverter
             if (entity != null)
             {
                 var sql = this.GetSqlFromEntity(entity);
+                var allColumnsInEntity = entity.Fields.Select(x => x.FieldName).ToList();
 
-                sql = this.AddKeyLevels(sql, depthMap, binding, bindings);
+                sql = this.AddKeyLevels(sql, depthMap, binding, bindings, allColumnsInEntity);
 
                 currentDataSources.Add(new DataSource { Path = entity.EntityName, Sql = sql });
             }
@@ -116,6 +144,9 @@ namespace DataConverter
         /// <param name="bindings">
         /// The bindings.
         /// </param>
+        /// <param name="bindingDepthMap">
+        /// The binding Depth Map.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
@@ -147,12 +178,12 @@ namespace DataConverter
         /// <param name="isObject">
         /// The is Object.
         /// </param>
+        /// <param name="depthMap">
+        /// The depth Map.
+        /// </param>
         /// <param name="depth">
         /// The depth.
         /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         public void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject, Dictionary<int, List<int>> depthMap, int depth)
         {
             var childObjectRelationships = this.GetChildObjectRelationships(binding);
@@ -239,12 +270,14 @@ namespace DataConverter
         /// <param name="bindings">
         /// The bindings.
         /// </param>
+        /// <param name="columnsAvailable">
+        /// The columns Available.
+        /// </param>
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings)
+        public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, List<string> columnsAvailable)
         {
-            var newSqlString = currentSqlString;
             var childObjectReferences = this.GetChildObjectRelationships(binding);
 
             if (childObjectReferences.Any())
@@ -261,9 +294,7 @@ namespace DataConverter
                 var myDepth = keyleveldepth.Where(x => x.Value.Contains(binding.Id)).Select(x => x.Key)
                     .FirstOrDefault();
                 var myColumn = singleResult.First();
-
-                // TODO: check if column actually exists in source binding
-                newSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth);
+                currentSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, columnsAvailable);
             }
 
 
@@ -276,11 +307,10 @@ namespace DataConverter
                     new ObjectReference { AttributeValues = bindingReference.AttributeValues },
                     "ChildKeyFields");
 
-                // TODO: check if column actually exists in source binding
-                newSqlString = this.GetKeyLevelSql(column, newSqlString, depth);
+                currentSqlString = this.GetKeyLevelSql(column, currentSqlString, depth, columnsAvailable);
             }
 
-            return newSqlString;
+            return currentSqlString;
         }
         
         /// <summary>
@@ -295,19 +325,33 @@ namespace DataConverter
         /// <param name="depth">
         /// The depth.
         /// </param>
+        /// <param name="columns">
+        /// The columns.
+        /// </param>
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth)
+        private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, List<string> columns)
         {
             var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
+            convertedToArray = convertedToArray.Select(x => x.Trim()).ToArray();
+            
+            // make sure the column is in the source entity
+            foreach (var field in convertedToArray)
+            {
+                if (!columns.Contains(field))
+                {
+                    return originalSql;
+                }
+            }
+
             if (convertedToArray.Length > 1)
             {
                 // gotta concatenate
-                return originalSql.Replace("SELECT ", $"SELECT CONCAT({string.Join(",'-',", convertedToArray.Select(x => x.Trim()))}) AS KeyLevel{depth}, ");
+                return originalSql.Replace("SELECT ", $"SELECT CONCAT({string.Join(",'-',", convertedToArray)}) AS KeyLevel{depth}, ");
             }
 
-            return originalSql.Replace("SELECT ", $"SELECT {convertedToArray[0].Trim()} AS KeyLevel{depth}, ");
+            return originalSql.Replace("SELECT ", $"SELECT {convertedToArray[0]} AS KeyLevel{depth}, ");
         }
 
         /// <summary>

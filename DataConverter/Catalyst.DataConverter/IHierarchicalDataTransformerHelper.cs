@@ -35,6 +35,9 @@ namespace DataConverter
         /// <param name="bindings">
         /// The bindings.
         /// </param>
+        /// <param name="depthMap">
+        /// The depth Map.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
@@ -51,6 +54,9 @@ namespace DataConverter
         /// </param>
         /// <param name="currentDataSources">
         /// The current data sources.
+        /// </param>
+        /// <param name="depthMap">
+        /// The depth Map.
         /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
@@ -97,12 +103,12 @@ namespace DataConverter
         /// <param name="isObject">
         /// The is Object.
         /// </param>
+        /// <param name="depthMap">
+        /// The depth Map.
+        /// </param>
         /// <param name="depth">
         /// The depth.
         /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject,Dictionary<int, List<int>> depthMap, int depth);
 
         /// <summary>
@@ -128,9 +134,17 @@ namespace DataConverter
         /// <param name="bindings">
         /// The bindings.
         /// </param>
+        /// <param name="columnsAvailable">
+        /// The columns Available.
+        /// </param>
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings);
+        string AddKeyLevels(
+            string currentSqlString,
+            Dictionary<int, List<int>> keyleveldepth,
+            Binding binding,
+            Binding[] bindings,
+            List<string> columnsAvailable);
     }
 }

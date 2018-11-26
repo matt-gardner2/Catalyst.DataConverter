@@ -261,9 +261,10 @@ namespace UnitTestProject1
             var parentSql = "SELECT p1, p2, Name, Address, Etc FROM [Database].[Schema].[Table]";
             var childSql = "SELECT p1, c1, c2, Name, Address, Etc FROM [Database].[Schema].[Table]";
             var grandchildSql = "SELECT c1, c2, g1, g2, Name, Address, Etc FROM [Database].[Schema].[Table]";
-            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parent, bindings.ToArray());
-            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, child, bindings.ToArray());
-            var grandchildActual = helper.AddKeyLevels(grandchildSql, keyleveldepth, grandchild, bindings.ToArray());
+            var columns = new List<string> { "p1", "p2", "Name", "Address", "Etc", "c1", "c2" };
+            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parent, bindings.ToArray(), columns);
+            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, child, bindings.ToArray(), columns);
+            var grandchildActual = helper.AddKeyLevels(grandchildSql, keyleveldepth, grandchild, bindings.ToArray(), columns);
 
             Assert.Equal("SELECT p1 AS KeyLevel1, p1, p2, Name, Address, Etc FROM [Database].[Schema].[Table]", parentActual);
             Assert.Equal("SELECT p1 AS KeyLevel1, CONCAT(c1,'-',c2) AS KeyLevel2, p1, c1, c2, Name, Address, Etc FROM [Database].[Schema].[Table]", childActual);
@@ -319,8 +320,9 @@ namespace UnitTestProject1
                                         { 1, new List<int> { 1 } },
                                         { 2, new List<int> { 2 } }
                                     };
-            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parentBinding, bindings.ToArray());
-            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, childBinding, bindings.ToArray());
+            var columns = new List<string> { "foo", "bar", "Name", "Address", "Etc" };
+            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parentBinding, bindings.ToArray(), columns);
+            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, childBinding, bindings.ToArray(), columns);
 
             Assert.Equal("SELECT foo AS KeyLevel1, foo, Name, Address, Etc FROM [Database].[Schema].[Table]", parentActual);
             Assert.Equal("SELECT bar AS KeyLevel1, bar, Name, Address, Etc FROM [Database].[Schema].[Table]", childActual);
