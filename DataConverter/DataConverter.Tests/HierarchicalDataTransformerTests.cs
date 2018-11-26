@@ -53,9 +53,10 @@ namespace UnitTestProject1
         public async Task TransformDataAsyncRunsExpectedHelperMethods()
         {
             this.mockHelper = new Mock<IHierarchicalDataTransformerHelper>();
-            this.mockHelper.Setup(x => x.GenerateDataModel(It.IsAny<Binding>(), It.IsAny<Binding[]>())).Returns(Task.FromResult("{}"));
+            var outParam = new Dictionary<int, List<int>>();
+            this.mockHelper.Setup(x => x.GenerateDataModel(It.IsAny<Binding>(), It.IsAny<Binding[]>(), out outParam)).Returns("{}");
             this.mockHelper
-                .Setup(x => x.GetDataSources(It.IsAny<Binding>(), It.IsAny<Binding[]>(), It.IsAny<List<DataSource>>()))
+                .Setup(x => x.GetDataSources(It.IsAny<Binding>(), It.IsAny<Binding[]>(), It.IsAny<List<DataSource>>(), outParam))
                 .Returns(
                     Task.FromResult(
                         new List<DataSource>
@@ -69,8 +70,8 @@ namespace UnitTestProject1
             var systemUnderTest = new HierarchicalDataTransformer(this.mockHelper.Object);
             await systemUnderTest.TransformDataAsync(null, new Binding(), new Entity(), new CancellationToken(false));
             this.mockHelper.Verify(x => x.GetBindingsForEntityAsync(It.IsAny<int>()), Times.Exactly(1));
-            this.mockHelper.Verify(x => x.GenerateDataModel(It.IsAny<Binding>(), It.IsAny<Binding[]>()), Times.Exactly(1));
-            this.mockHelper.Verify(x => x.GetDataSources(It.IsAny<Binding>(), It.IsAny<Binding[]>(), It.IsAny<List<DataSource>>()), Times.Exactly(1));
+            this.mockHelper.Verify(x => x.GenerateDataModel(It.IsAny<Binding>(), It.IsAny<Binding[]>(), out outParam), Times.Exactly(1));
+            this.mockHelper.Verify(x => x.GetDataSources(It.IsAny<Binding>(), It.IsAny<Binding[]>(), It.IsAny<List<DataSource>>(), outParam), Times.Exactly(1));
             this.mockHelper.Verify(x => x.GetConfig(), Times.Exactly(1));
         }
     }

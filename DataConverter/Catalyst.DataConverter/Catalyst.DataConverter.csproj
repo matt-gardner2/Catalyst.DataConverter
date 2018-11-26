@@ -180,6 +180,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BindingReference.cs" />
     <Compile Include="HierarchicalDataTransformer.cs" />
     <Compile Include="HierarchicalDataTransformerHelper.cs" />
     <Compile Include="IHierarchicalDataTransformerHelper.cs" />

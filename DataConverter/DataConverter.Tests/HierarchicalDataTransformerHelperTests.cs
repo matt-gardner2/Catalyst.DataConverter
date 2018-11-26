@@ -10,7 +10,9 @@
 namespace UnitTestProject1
 {
     using System.Collections.Generic;
+    using System.Collections.ObjectModel;
     using System.Dynamic;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -65,7 +67,8 @@ namespace UnitTestProject1
             }
             var parentBinding = new Binding();
             IHierarchicalDataTransformerHelper helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
-            var model = await helper.GenerateDataModel(parentBinding, new Binding[0]);
+            var depthMap = new Dictionary<int, List<int>>();
+            var model = helper.GenerateDataModel(parentBinding, new Binding[0], out depthMap);
 
             Assert.Equal("{}", model);
         }
@@ -88,7 +91,8 @@ namespace UnitTestProject1
             var parentBinding = this.GetSimpleParentBinding();
             var bindings = this.GetSimpleBindings();
             IHierarchicalDataTransformerHelper helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
-            var model = await helper.GenerateDataModel(parentBinding, bindings);
+            var depthMap = new Dictionary<int, List<int>>();
+            var model = helper.GenerateDataModel(parentBinding, bindings, out depthMap);
 
             Assert.Equal("{\"MyEntity_2\":{},\"MyEntity_3\":{}}", model);
         }
@@ -111,9 +115,11 @@ namespace UnitTestProject1
             var parentBinding = this.GetNestedParentBinding();
             var bindings = this.GetNestedBindings();
             IHierarchicalDataTransformerHelper helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
-            var model = await helper.GenerateDataModel(parentBinding, bindings);
+            var depthMap = new Dictionary<int, List<int>>();
+            var model = helper.GenerateDataModel(parentBinding, bindings, out depthMap);
 
             Assert.Equal("{\"MyEntity_3\":{\"MyEntity_4\":{}}}", model);
+
         }
 
         /// <summary>
@@ -134,7 +140,9 @@ namespace UnitTestProject1
             var parentBinding = this.GetNestedParentArrayBinding();
             var bindings = this.GetNestedBindings();
             IHierarchicalDataTransformerHelper helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
-            var model = await helper.GenerateDataModel(parentBinding, bindings);
+            var depthMap = new Dictionary<int, List<int>>();
+            var model = helper.GenerateDataModel(parentBinding, bindings, out depthMap);
+            
 
             Assert.Equal("{\"MyEntity_2\":[{\"MyEntity_3\":{\"MyEntity_4\":{}}}]}", model);
         }
@@ -146,7 +154,8 @@ namespace UnitTestProject1
             var exampleModelBindings = this.GetExampleModelBindings();
             this.SetupExampleModelGetEntity();
             var helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
-            var model = await helper.GenerateDataModel(exampleModelParentBinding, exampleModelBindings);
+            var depthMap = new Dictionary<int, List<int>>();
+            var model = helper.GenerateDataModel(exampleModelParentBinding, exampleModelBindings, out depthMap);
             Assert.Equal("{\"identifier\":[],\"name\":[],\"communication\":[],\"us-core-race\":{\"extension\":[]},\"condition\":[{\"category\":{},\"code\":{}}]}", model);
         }
 
@@ -168,15 +177,173 @@ namespace UnitTestProject1
             Assert.True(config.UploadToElasticSearch);
             Assert.Equal("Patients2", config.Index);
             Assert.Equal("patient", config.EntityType);
-            Assert.Equal("BatchDefinitionId", config.TopLevelKeyColumn);
+            Assert.Equal("KeyLevel0", config.TopLevelKeyColumn);
             Assert.False(config.UseMultipleThreads);
             Assert.True(config.KeepTemporaryLookupColumnsInOutput);
         }
 
         [Fact]
-        public async Task KeyLevelsWork()
+        public async Task KeyLevelsWorkWithMiddleChildBinding()
         {
+            var helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
 
+            // Parent => 1; Child => 2; Grandchild => 3
+            var parent = new Binding
+                             {
+                                 Id = 1,
+                                 ObjectRelationships =
+                                     {
+                                         new ObjectReference
+                                             {
+                                                 ChildObjectId = 2,
+                                                 AttributeValues =
+                                                     {
+                                                         new
+                                                         ObjectAttributeValue
+                                                             {
+                                                                 AttributeName
+                                                                     = "ChildKeyFields",
+                                                                 AttributeValue
+                                                                     = "[ \"p1\" ]"
+                                                             },
+                                                         new
+                                                         ObjectAttributeValue
+                                                             {
+                                                                 AttributeName
+                                                                     = "ParentKeyFields",
+                                                                 AttributeValue
+                                                                     = "[ \"p1\" ]"
+                                                             }
+                                                     },
+                                                 ChildObjectType = "Binding"
+                                             }
+                                     }
+                             };
+            var child = new Binding
+                            {
+                                Id = 2,
+                                ObjectRelationships =
+                                    {
+                                        new ObjectReference
+                                            {
+                                                ChildObjectId = 3,
+                                                AttributeValues =
+                                                    {
+                                                        new
+                                                        ObjectAttributeValue
+                                                            {
+                                                                AttributeName
+                                                                    = "ChildKeyFields",
+                                                                AttributeValue
+                                                                    = "[ \"c1\", \"c2\" ]"
+                                                            },
+                                                        new
+                                                        ObjectAttributeValue
+                                                            {
+                                                                AttributeName
+                                                                    = "ParentKeyFields",
+                                                                AttributeValue
+                                                                    = "[ \"c1\", \"c2\" ]"
+                                                            }
+                                                    },
+                                                ChildObjectType = "Binding"
+                                            }
+                                    }
+                            };
+            var grandchild = new Binding { Id = 3};
+            var bindings = new List<Binding> { parent, child, grandchild };
+            var keyleveldepth = new Dictionary<int, List<int>>
+                                    {
+                                        { 1, new List<int> { 1 } },
+                                        { 2, new List<int> { 2 } },
+                                        { 3, new List<int> { 3 } }
+                                    };
+            var parentSql = "SELECT p1, p2, Name, Address, Etc FROM [Database].[Schema].[Table]";
+            var childSql = "SELECT p1, c1, c2, Name, Address, Etc FROM [Database].[Schema].[Table]";
+            var grandchildSql = "SELECT c1, c2, g1, g2, Name, Address, Etc FROM [Database].[Schema].[Table]";
+            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parent, bindings.ToArray());
+            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, child, bindings.ToArray());
+            var grandchildActual = helper.AddKeyLevels(grandchildSql, keyleveldepth, grandchild, bindings.ToArray());
+
+            Assert.Equal("SELECT p1 AS KeyLevel1, p1, p2, Name, Address, Etc FROM [Database].[Schema].[Table]", parentActual);
+            Assert.Equal("SELECT p1 AS KeyLevel1, CONCAT(c1,'-',c2) AS KeyLevel2, p1, c1, c2, Name, Address, Etc FROM [Database].[Schema].[Table]", childActual);
+            // Assert.Equal("SELECT CONCAT(c1,'-',c2) AS KeyLevel2, c1, c2, g1, g2, Name, Address, Etc FROM [Database].[Schema].[Table]", grandchildActual);
+        }
+
+        [Fact]
+        public async Task KeyLevelsWorkSimple()
+        {
+            var helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
+
+            // Parent => 1; Child => 2
+            var parentBinding = new Binding
+                                    {
+                                        Id = 1,
+                                        ObjectRelationships =
+                                            {
+                                                new ObjectReference
+                                                    {
+                                                        ChildObjectId = 2,
+                                                        AttributeValues =
+                                                            {
+                                                                new
+                                                                ObjectAttributeValue
+                                                                    {
+                                                                        AttributeName
+                                                                            = "ChildKeyFields",
+                                                                        AttributeValue
+                                                                            = "[ \"bar\" ]"
+                                                                    },
+                                                                new
+                                                                ObjectAttributeValue
+                                                                    {
+                                                                        AttributeName
+                                                                            = "ParentKeyFields",
+                                                                        AttributeValue
+                                                                            = "[ \"foo\" ]"
+                                                                    }
+                                                            },
+                                                        ChildObjectType = "Binding"
+                                                    }
+                                            }
+                                    };
+            var childBinding = new Binding { Id = 2 };
+
+            var bindings = new List<Binding> { parentBinding, childBinding };
+
+            var parentSql = "SELECT foo, Name, Address, Etc FROM [Database].[Schema].[Table]";
+            var childSql = "SELECT bar, Name, Address, Etc FROM [Database].[Schema].[Table]";
+
+            var keyleveldepth = new Dictionary<int, List<int>>
+                                    {
+                                        { 1, new List<int> { 1 } },
+                                        { 2, new List<int> { 2 } }
+                                    };
+            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parentBinding, bindings.ToArray());
+            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, childBinding, bindings.ToArray());
+
+            Assert.Equal("SELECT foo AS KeyLevel1, foo, Name, Address, Etc FROM [Database].[Schema].[Table]", parentActual);
+            Assert.Equal("SELECT bar AS KeyLevel1, bar, Name, Address, Etc FROM [Database].[Schema].[Table]", childActual);
+        }
+
+        [Fact]
+        public async Task RunDataTransformer()
+        {
+            var exampleModelParentBinding = this.GetExampleModelParentBinding();
+            var exampleModelBindings = this.GetExampleModelBindings();
+            this.SetupExampleModelGetEntity();
+            var helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
+
+
+            var bindingsForEntity = exampleModelBindings.ToList();
+            bindingsForEntity.Add(exampleModelParentBinding);
+            var bindingsArray = bindingsForEntity.ToArray();
+            var depthMap = new Dictionary<int, List<int>>();
+            var model = helper.GenerateDataModel(exampleModelParentBinding, bindingsArray, out depthMap);
+            Assert.Equal("{\"identifier\":[],\"name\":[],\"communication\":[],\"us-core-race\":{\"extension\":[]},\"condition\":[{\"category\":{},\"code\":{}}]}", model);
+
+
+            var dataSources = await helper.GetDataSources(exampleModelParentBinding, bindingsArray, new List<DataSource>(), depthMap);             
         }
 
         #region helper methods
@@ -206,23 +373,30 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "patientTable"
-                                              },
+                                                  AttributeValue = "SourcePatientBase"
+                                              }
                                       },
-                                  Id = 9
+                                  Id = 9,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "CASE GenderCD WHEN 'Female' THEN 'female' WHEN 'Male' THEN 'male' ELSE 'unknown' END AS gender" },
+                                          new Field { FieldName = "BirthDTS as birthDate" }
+                                      }
                               };
+
+            // TODO: NEED TO THINK ABOUT UNION JOINS
             entities[0] = new Entity
                               {
                                   EntityName = "identifier",
@@ -230,23 +404,30 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "identifierTable"
+                                                  AttributeValue = "SourcePatientBASE"
                                               },
                                       },
-                                  Id = 1
-                              };
+                                  Id = 1,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "'usual' as [use]" },
+                                          new Field { FieldName = "'http://www.healthcatalyst.com' as system" },
+                                          new Field { FieldName = "MRN as value" },
+                                          new Field { FieldName = "'MR' as type" }
+                                      }
+            };
             entities[1] = new Entity
                               {
                                   EntityName = "name",
@@ -254,23 +435,31 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "nameTable"
+                                                  AttributeValue = "SourcePatientBASE"
                                               },
                                       },
-                                  Id = 2
-                              };
+                                  Id = 2,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "PatientLastNM as family" },
+                                          new Field { FieldName = "PatientFirstNM as given" },
+                                          new Field { FieldName = "PatientFullNM as text" }
+                                      }
+            };
+
+            // TODO: THINK ABOUT UNION JOINS
             entities[2] = new Entity
                               {
                                   EntityName = "communication",
@@ -278,22 +467,26 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "communicationTable"
-                                              },
+                                                  AttributeValue = "SourcePatientBASE"
+                                              }
                                       },
-                                  Id = 3
+                                  Id = 3,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "LanguageDSC as language" }
+                                      }
                               };
             entities[3] = new Entity
                               {
@@ -302,23 +495,27 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "raceTable"
-                                              },
+                                                  AttributeValue = "SourcePatientBASE"
+                                              }
                                       },
-                                  Id = 4
-                              };
+                                  Id = 4,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "'http://hl7.org/fhir/us/core/StructureDefinition/us-core-race' as url" }
+                                      }
+            };
             entities[4] = new Entity
                               {
                                   EntityName = "extension",
@@ -326,23 +523,28 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "communicationExtensionTable"
-                                              },
+                                                  AttributeValue = "SourcePatientBASE"
+                                              }
                                       },
-                                  Id = 5
-                              };
+                                  Id = 5,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "'ombCategory' as url" },
+                                          new Field { FieldName = @"CASE RaceDSC WHEN 'Declined' THEN '' WHEN 'American Indian or Alaskan Native' THEN '1002-5' WHEN 'Other' THEN '' WHEN 'Black or African American' THEN '2054-5' WHEN 'Native Hawaiian or Other Pacific Islander' THEN '2076-8' WHEN 'White or Caucasian' THEN '2106-3' WHEN 'Two Races' THEN '' WHEN 'Asian' THEN '2028-9' ELSE '' END AS valueCoding" },
+                                      }
+            };
             entities[5] = new Entity
                               {
                                   EntityName = "condition",
@@ -350,23 +552,28 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Person"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "conditionTable"
-                                              },
+                                                  AttributeValue = "SourcePatientBASE"
+                                              }
                                       },
-                                  Id = 6
-                              };
+                                  Id = 6,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "'ombCategory' as url" },
+                                          new Field { FieldName = @"CASE RaceDSC WHEN 'Declined' THEN '' WHEN 'American Indian or Alaskan Native' THEN '1002-5' WHEN 'Other' THEN '' WHEN 'Black or African American' THEN '2054-5' WHEN 'Native Hawaiian or Other Pacific Islander' THEN '2076-8' WHEN 'White or Caucasian' THEN '2106-3' WHEN 'Two Races' THEN '' WHEN 'Asian' THEN '2028-9' ELSE '' END AS valueCoding" },
+                                      }
+            };
             entities[6] = new Entity
                               {
                                   EntityName = "category",
@@ -374,23 +581,30 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Clinical"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "categoryTable"
-                                              },
+                                                  AttributeValue = "DiagnosisBASE"
+                                              }
                                       },
-                                  Id = 7
-                              };
+                                  Id = 7,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "DiagnosisID" },
+                                          new Field { FieldName = "RowSourceDSC" },
+                                          new Field { FieldName = @"CASE DiagnosisTypeDSC WHEN 'ICD Problem List Code' THEN 'problem-list-item' WHEN 'ICD Primary Diagnosis Code' THEN 'problem' WHEN 'ICD Diagnosis Cod' THEN 'problem' WHEN 'ICD Admit Diagnosis Code' THEN 'encounter-diagnosis' ELSE 'health-concern' END AS coding" },
+                                          new Field { FieldName = "DiagnosisTypeDSC as text" },
+                                      }
+            };
             entities[7] = new Entity
                               {
                                   EntityName = "code",
@@ -398,23 +612,31 @@ namespace UnitTestProject1
                                       {
                                           new ObjectAttributeValue
                                               {
-                                                  AttributeName =
-                                                      "DatabaseName",
-                                                  AttributeValue = "MyDatabase"
+                                                  AttributeName = "DatabaseName",
+                                                  AttributeValue = "EDWAdmin"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "SchemaName",
-                                                  AttributeValue = "MySchema"
+                                                  AttributeValue = "Clinical"
                                               },
                                           new ObjectAttributeValue
                                               {
                                                   AttributeName = "TableName",
-                                                  AttributeValue = "codeTable"
-                                              },
+                                                  AttributeValue = "DiagnosisBASE"
+                                              }
                                       },
-                                  Id = 8
-                              };
+                                  Id = 8,
+                                  Fields =
+                                      {
+                                          new Field { FieldName = "PatientID" },
+                                          new Field { FieldName = "DiagnosisID" },
+                                          new Field { FieldName = "RowSourceDSC" },
+                                          new Field { FieldName = @"CASE CodeTypeCD WHEN 'ICD9DX' THEN 'http://hl7.org/fhir/sid/icd-9-cm' WHEN 'ICD10DX' THEN 'http://hl7.org/fhir/sid/icd-10-cm' ELSE NULL END AS system" },
+                                          new Field { FieldName = "DiagnosisCD as code" },
+                                          new Field { FieldName = "DiagnosisTypeDSC as text" },
+                                      }
+            };
             return entities;
         }
 
@@ -426,19 +648,19 @@ namespace UnitTestProject1
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 1, SourceAliasName = "identifier" } },
                                   Id = 1
-                              };
+            };
             bindings[1] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 2, SourceAliasName = "name" } },
                                   Id = 2
-                              };
+            };
             bindings[2] = new Binding
                               {
                                   BindingType = "Nested",
                                   SourcedByEntities = { new SourceEntityReference { SourceEntityId = 3, SourceAliasName = "communication" } },
                                   Id = 3
-                              };
+            };
             bindings[3] = new Binding
                               {
                                   BindingType = "Nested",
@@ -449,8 +671,13 @@ namespace UnitTestProject1
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 5,
-                                                  ChildObjectType = "binding",
-                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
+                                                  ChildObjectType = "Binding",
+                                                  AttributeValues =
+                                                      {
+                                                          new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" },
+                                                          new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                          new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                      }
                                               }
                                       }
             };
@@ -470,16 +697,26 @@ namespace UnitTestProject1
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 7,
-                                                  ChildObjectType = "binding",
-                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
+                                                  ChildObjectType = "Binding",
+                                                  AttributeValues =
+                                                      {
+                                                          new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" },
+                                                          new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"DiagnosisID\", \"RowSourceDSC\", \"DiagnosisTypeDSC\"]" },
+                                                          new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"DiagnosisID\", \"RowSourceDSC\", \"DiagnosisTypeDSC\"]" },
+                                                      }
                                               },
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 8,
-                                                  ChildObjectType = "binding",
-                                                  AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
+                                                  ChildObjectType = "Binding",
+                                                  AttributeValues =
+                                                      {
+                                                          new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" },
+                                                          new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"DiagnosisID\", \"RowSourceDSC\", \"DiagnosisTypeDSC\"]" },
+                                                          new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"DiagnosisID\", \"RowSourceDSC\", \"DiagnosisTypeDSC\"]" }
+                                                      }
                                               }
-                                      }
+                                      },
             };
             bindings[6] = new Binding
                               {
@@ -514,32 +751,57 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 1,
-                                           ChildObjectType = "binding",
-                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
+                                           ChildObjectType = "Binding",
+                                           AttributeValues =
+                                               {
+                                                   new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" },
+                                                   new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                   new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"PatientID\"]" }
+                                               }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 2,
-                                           ChildObjectType = "binding",
-                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
+                                           ChildObjectType = "Binding",
+                                           AttributeValues =
+                                               {
+                                                   new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" },
+                                                   new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                   new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"PatientID\"]" }
+                                               }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 3,
-                                           ChildObjectType = "binding",
-                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
+                                           ChildObjectType = "Binding",
+                                           AttributeValues =
+                                               {
+                                                   new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" },
+                                                   new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                   new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"PatientID\"]" }
+                                               }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 4,
-                                           ChildObjectType = "binding",
-                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
+                                           ChildObjectType = "Binding",
+                                           AttributeValues =
+                                               {
+                                                   new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" },
+                                                   new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                   new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"PatientID\"]" }
+                                               }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 6,
-                                           ChildObjectType = "binding",
-                                           AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
+                                           ChildObjectType = "Binding",
+                                           AttributeValues =
+                                               {
+                                                   new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" },
+                                                   new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[\"PatientID\"]" },
+                                                   new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[\"PatientID\"]" }
+                                               }
                                        }
                                }
                        };
@@ -593,7 +855,7 @@ namespace UnitTestProject1
                                           new ObjectReference
                                               {
                                                   ChildObjectId = 2,
-                                                  ChildObjectType = "binding",
+                                                  ChildObjectType = "Binding",
                                                   AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                               }
                                       }
@@ -609,7 +871,7 @@ namespace UnitTestProject1
                         new ObjectReference
                             {
                                 ChildObjectId = 3,
-                                ChildObjectType = "binding",
+                                ChildObjectType = "Binding",
                                 AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                             }
                     }
@@ -649,13 +911,13 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 1,
-                                           ChildObjectType = "binding",
+                                           ChildObjectType = "Binding",
                                            AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                        },
                                    new ObjectReference
                                        {
                                            ChildObjectId = 2,
-                                           ChildObjectType = "binding",
+                                           ChildObjectType = "Binding",
                                            AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } }
                                        }
                                }
@@ -663,7 +925,7 @@ namespace UnitTestProject1
         }
 
         /// <summary>
-        /// The get parent binding.
+        /// The get parent Binding.
         /// </summary>
         /// <returns>
         /// The <see cref="Binding"/>.
@@ -686,7 +948,7 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 2,
-                                           ChildObjectType = "binding",
+                                           ChildObjectType = "Binding",
                                            AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "SingleObject" } } 
                                        }
                                    
@@ -695,7 +957,7 @@ namespace UnitTestProject1
         }
 
         /// <summary>
-        /// The get parent binding.
+        /// The get parent Binding.
         /// </summary>
         /// <returns>
         /// The <see cref="Binding"/>.
@@ -718,7 +980,7 @@ namespace UnitTestProject1
                                    new ObjectReference
                                        {
                                            ChildObjectId = 1,
-                                           ChildObjectType = "binding",
+                                           ChildObjectType = "Binding",
                                            AttributeValues = { new ObjectAttributeValue { AttributeName = "Cardinality", AttributeValue = "Array" } }
                                        }
                                    
@@ -776,5 +1038,44 @@ namespace UnitTestProject1
         }
 
         #endregion
+
+        //var parentBinding = new Binding
+        //                        {
+        //                            Id = 1,
+        //                            ObjectRelationships =
+        //                                {
+        //                                    new ObjectReference
+        //                                        {
+        //                                            ChildObjectId = 2,
+        //                                            AttributeValues =
+        //                                                {
+        //                                                    new
+        //                                                    ObjectAttributeValue
+        //                                                        {
+        //                                                            AttributeName
+        //                                                                = "ChildKeyFields",
+        //                                                            AttributeValue
+        //                                                                = "[ \"bar\" ]"
+        //                                                        },
+        //                                                    new
+        //                                                    ObjectAttributeValue
+        //                                                        {
+        //                                                            AttributeName
+        //                                                                = "ParentKeyFields",
+        //                                                            AttributeValue
+        //                                                                = "[ \"foo\" ]"
+        //                                                        }
+        //                                                },
+        //                                            ChildObjectType =
+        //                                                "Binding"
+        //                                        }
+        //                                }
+        //                        };
+        //var childBinding = new Binding { Id = 2 };
+        //var bindings = new List<Binding> { parentBinding, childBinding };
+        //this.mockMetaDataService = new Mock<IMetadataServiceClient>();
+        //this.mockMetaDataService.Setup(x => x.GetBindingsForEntityAsync(It.IsAny<int>())).Returns(Task.FromResult(bindings.ToArray()));
+        //var helper = new HierarchicalDataTransformerHelper(this.mockMetaDataService.Object);
+        //var result = await helper.TransformDataAsync(parentBinding, new Entity { Id = 1 });
     }
 }

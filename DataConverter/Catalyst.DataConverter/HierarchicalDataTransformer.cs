@@ -67,8 +67,9 @@ namespace DataConverter
             CancellationToken cancellationToken)
         {
             var bindings = await this.helper.GetBindingsForEntityAsync(entity.Id);
-            var dataModel = await this.helper.GenerateDataModel(binding, bindings);
-            var dataSources = await this.helper.GetDataSources(binding, bindings, new List<DataSource>());
+            var depthMap = new Dictionary<int, List<int>>();
+            var dataModel = this.helper.GenerateDataModel(binding, bindings, out depthMap);
+            var dataSources = await this.helper.GetDataSources(binding, bindings, new List<DataSource>(), depthMap);
             QueryConfig config = await this.helper.GetConfig();
             
             var jobData = new JobData { DataModel = dataModel, MyDataSources = dataSources };

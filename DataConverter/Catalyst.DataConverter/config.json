@@ -13,7 +13,7 @@
     'Index' : 'Patients2',
     'Alias' : 'patients',
     'EntityType' : 'patient',
-    'TopLevelKeyColumn' : 'BatchDefinitionId',
+    'TopLevelKeyColumn' : 'KeyLevel0',
     'UseMultipleThreads' : false,
     'KeepTemporaryLookupColumnsInOutput' : true
 }

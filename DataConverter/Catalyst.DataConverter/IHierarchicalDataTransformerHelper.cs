@@ -38,7 +38,7 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task<string> GenerateDataModel(Binding binding, Binding[] bindings);
+        string GenerateDataModel(Binding binding, Binding[] bindings, out Dictionary<int, List<int>> depthMap);
 
         /// <summary>
         /// The get data sources.
@@ -55,7 +55,7 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task<List<DataSource>> GetDataSources(Binding binding, Binding[] bindings, List<DataSource> currentDataSources);
+        Task<List<DataSource>> GetDataSources(Binding binding, Binding[] bindings, List<DataSource> currentDataSources, Dictionary<int, List<int>> depthMap);
 
         /// <summary>
         /// The get bindings for entity async.
@@ -97,10 +97,13 @@ namespace DataConverter
         /// <param name="isObject">
         /// The is Object.
         /// </param>
+        /// <param name="depth">
+        /// The depth.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject);
+        void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject,Dictionary<int, List<int>> depthMap, int depth);
 
         /// <summary>
         /// The get config.
@@ -109,5 +112,27 @@ namespace DataConverter
         /// The <see cref="Task"/>.
         /// </returns>
         Task<QueryConfig> GetConfig();
+
+        /// <summary>
+        /// The add key levels.
+        /// </summary>
+        /// <param name="currentSqlString">
+        /// The current sql string.
+        /// </param>
+        /// <param name="keyleveldepth">
+        /// The keyleveldepth.
+        /// </param>
+        /// <param name="binding">
+        /// The binding.
+        /// </param>
+        /// <param name="bindings">
+        /// The bindings.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings);
+
+        Task<JobData> TransformDataAsync(Binding binding, Entity entity);
     }
 }

@@ -11,9 +11,11 @@
 
 namespace DataConverter
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
+    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using Catalyst.DataProcessing.Shared.Models.Enums;
@@ -32,6 +34,22 @@ namespace DataConverter
     public class HierarchicalDataTransformerHelper : IHierarchicalDataTransformerHelper
     {
 
+        public async Task<JobData> TransformDataAsync(
+            Binding binding,
+            Entity entity)
+        {
+            var bindings = await this.GetBindingsForEntityAsync(entity.Id);
+            var depthMap = new Dictionary<int, List<int>>();
+            var dataModel = this.GenerateDataModel(binding, bindings, out depthMap);
+            var dataSources = await this.GetDataSources(binding, bindings, new List<DataSource>(), depthMap);
+            QueryConfig config = await this.GetConfig();
+
+            var jobData = new JobData { DataModel = dataModel, MyDataSources = dataSources };
+
+            // this.RunDatabus(config, jobData);
+            return jobData;
+        }
+
         /// <summary>
         /// The service client.
         /// </summary>
@@ -48,15 +66,6 @@ namespace DataConverter
             this.serviceClient = serviceClient;
         }
 
-        /// <summary>
-        /// The run databus.
-        /// </summary>
-        /// <param name="config">
-        /// The config.
-        /// </param>
-        /// <param name="jobData">
-        /// The job Data.
-        /// </param>
         public void RunDatabus(QueryConfig config, JobData jobData)
         {
             var job = new Job
@@ -68,45 +77,37 @@ namespace DataConverter
             runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
         }
 
-        /// <summary>
-        /// The get data sources.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="bindings">
-        /// The bindings.
-        /// </param>
-        /// <param name="currentDataSources">
-        /// The current data sources.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         public async Task<List<DataSource>> GetDataSources(
             Binding binding,
             Binding[] bindings,
-            List<DataSource> currentDataSources)
+            List<DataSource> currentDataSources, 
+            Dictionary<int, List<int>> depthMap)
         {
             var entity = await this.GetEntityFromBinding(binding);
             if (entity != null)
             {
-                // TODO: Get the object relationship from the binding for the key levels 
-                // TODO: 
-                currentDataSources.Add(new DataSource { Path = entity.EntityName, Sql = this.GetSqlFromEntity(entity) });
+                var sql = this.GetSqlFromEntity(entity);
+
+                sql = this.AddKeyLevels(sql, depthMap, binding, bindings);
+
+                currentDataSources.Add(new DataSource { Path = entity.EntityName, Sql = sql });
             }
 
-            var bindingRelationship = binding.ObjectRelationships.FirstOrDefault(x => x.ChildObjectType == "binding");
-            if (bindingRelationship != null)
+            var bindingRelationships = binding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
+            if (bindingRelationships.Count > 0)
             {
-                var relationshipMatch = bindings.FirstOrDefault(x => x.Id == bindingRelationship.ChildObjectId);
-                if (relationshipMatch != null)
+                foreach (var relationship in bindingRelationships)
                 {
-                    await this.GetDataSources(relationshipMatch, bindings, currentDataSources);
+                    var relationshipMatch = bindings.FirstOrDefault(x => x.Id == relationship.ChildObjectId);
+                    if (relationshipMatch != null)
+                    {
+                        await this.GetDataSources(relationshipMatch, bindings, currentDataSources, depthMap);
+                    }
                 }
             }
             return currentDataSources;
         }
+
 
         /// <summary>
         /// The get bindings for entity async.
@@ -135,10 +136,11 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        public async Task<string> GenerateDataModel(Binding binding, Binding[] bindings)
+        public string GenerateDataModel(Binding binding, Binding[] bindings, out Dictionary<int, List<int>> bindingDepthMap)
         {
             var sb = new StringBuilder();
-            await this.GetChildText(sb, binding, bindings, true, true);
+            bindingDepthMap = new Dictionary<int, List<int>>();
+            this.GetChildText(sb, binding, bindings, true, true, bindingDepthMap, 0);
             var serialized = sb.ToString();
             serialized = serialized.Replace(",}", "}");
             return serialized;
@@ -162,15 +164,27 @@ namespace DataConverter
         /// <param name="isObject">
         /// The is Object.
         /// </param>
+        /// <param name="depth">
+        /// The depth.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        public async Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject)
+        public void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject, Dictionary<int, List<int>> depthMap, int depth)
         {
-            var childObjectRelationships = this.GetObjectRelationships(binding);
+            var childObjectRelationships = this.GetChildObjectRelationships(binding);
             var hasChildren = childObjectRelationships.Count > 0;
 
-            var parameterName = $"\"{await this.GetEntityName(binding)}\":";
+            if (!depthMap.ContainsKey(depth))
+            {
+                depthMap.Add(depth, new List<int> { binding.Id });
+            }
+            else
+            {
+                depthMap[depth].Add(binding.Id);
+            }
+
+            var parameterName = $"\"{Task.Run(()=>this.GetEntityName(binding)).Result}\":";
 
             if (isFirst)
             {
@@ -200,7 +214,7 @@ namespace DataConverter
                 {
                     var childBinding = this.GetMatchingChild(bindings, childObjectRelationship.ChildObjectId);
                     var childIsObject = this.GetCardinalityFromObjectReference(childObjectRelationship) != "Array";
-                    await this.GetChildText(builder, childBinding, bindings, false, childIsObject);
+                    this.GetChildText(builder, childBinding, bindings, false, childIsObject, depthMap, depth + 1);
                 }
             }
 
@@ -224,8 +238,173 @@ namespace DataConverter
         /// </returns>
         public async Task<QueryConfig> GetConfig()
         {
-            // TODO: Replace this with actual config
             return await Task.Run(() => this.GetQueryConfigFromJsonFile());
+        }
+
+        /// <summary>
+        /// The add key levels.
+        /// </summary>
+        /// <param name="currentSqlString">
+        /// The current sql string.
+        /// </param>
+        /// <param name="keyleveldepth">
+        /// The keyleveldepth.
+        /// </param>
+        /// <param name="binding">
+        /// The binding.
+        /// </param>
+        /// <param name="bindings">
+        /// The bindings.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings)
+        {
+            var newSqlString = currentSqlString;
+            var childObjectReferences = this.GetChildObjectRelationships(binding);
+
+            if (childObjectReferences.Any())
+            {
+                var singleResult = childObjectReferences.Select(
+                        x => x.AttributeValues.First(atr => atr.AttributeName == "ParentKeyFields").AttributeValue)
+                    .Distinct().ToList();
+                if (singleResult.Count != 1)
+                {
+                    throw new InvalidOperationException(
+                        $"All of the children for this binding ({binding.Id}) do not have the same parent key designation.");
+                }
+
+                var myDepth = keyleveldepth.Where(x => x.Value.Contains(binding.Id)).Select(x => x.Key)
+                    .FirstOrDefault();
+                var myColumn = singleResult.First();
+
+                // TODO: check if column actually exists in source binding
+                newSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth);
+            }
+
+
+            var parentObjectReferences = this.GetParentObjectRelationships(binding, bindings);
+            foreach (var bindingReference in parentObjectReferences)
+            {
+                var depth = keyleveldepth.Where(x => x.Value.Contains(bindingReference.ParentObjectId))
+                    .Select(x => x.Key).FirstOrDefault();
+                var column = this.GetAttributeValueFromObjectReference(
+                    new ObjectReference { AttributeValues = bindingReference.AttributeValues },
+                    "ChildKeyFields");
+
+                // TODO: check if column actually exists in source binding
+                newSqlString = this.GetKeyLevelSql(column, newSqlString, depth);
+            }
+
+            return newSqlString;
+        }
+
+        /// <summary>
+        /// The get new sql string.
+        /// </summary>
+        /// <param name="originalString">
+        /// The original string.
+        /// </param>
+        /// <param name="replaceKey">
+        /// The replace key.
+        /// </param>
+        /// <param name="replaceValue">
+        /// The replace value.
+        /// </param>
+        /// <param name="depth">
+        /// The depth.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        private string GetNewSqlString(string originalString, string replaceKey, string replaceValue, int depth)
+        {
+            var regex = new Regex(Regex.Escape($" {replaceKey},"));
+
+            var newSqlString = regex.Replace(originalString, $" {replaceValue} AS KeyLevel{depth},", 1);
+            return newSqlString;
+        }
+
+        /// <summary>
+        /// The get key level column string.
+        /// </summary>
+        /// <param name="bindingReference">
+        /// The binding reference.
+        /// </param>
+        /// <param name="isParent">
+        /// The is parent.
+        /// </param>
+        /// <returns>
+        /// The <see cref="Dictionary"/>.
+        /// </returns>
+        private KeyValuePair<string, string> GetKeyLevelColumnLookup(BindingReference bindingReference, bool isParent)
+        {
+            var replacementLookup = new KeyValuePair<string, string>(); 
+            var attributeValue = isParent
+                                     ? this.GetAttributeValueFromObjectReference(
+                                         new ObjectReference { AttributeValues = bindingReference.AttributeValues },
+                                         "ParentKeyFields")
+                                     : this.GetAttributeValueFromObjectReference(
+                                         new ObjectReference { AttributeValues = bindingReference.AttributeValues },
+                                         "ChildKeyFields");
+            var convertedToArray = attributeValue.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
+            if (convertedToArray.Length > 1)
+            {
+                // gotta concatenate
+                var concatenation = "CONCAT(" + string.Join(",'-',", convertedToArray.Select(x => x.Trim())) + ")";
+                foreach (var arrayValue in convertedToArray)
+                {
+                    replacementLookup = new KeyValuePair<string, string>(arrayValue.Trim(), concatenation);
+                }
+            }
+            else
+            {
+                replacementLookup = new KeyValuePair<string, string>(convertedToArray[0].Trim(), convertedToArray[0].Trim());
+            }
+
+            return replacementLookup;
+        }
+
+        /// <summary>
+        /// The get key level sql.
+        /// </summary>
+        /// <param name="keyFieldsString">
+        /// The key fields string.
+        /// </param>
+        /// <param name="originalSql">
+        /// The original sql.
+        /// </param>
+        /// <param name="depth">
+        /// The depth.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth)
+        {
+            var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
+            if (convertedToArray.Length > 1)
+            {
+                // gotta concatenate
+                return originalSql.Replace("SELECT ", $"SELECT CONCAT({string.Join(",'-',", convertedToArray.Select(x => x.Trim()))}) AS KeyLevel{depth}, ");
+            }
+
+            return originalSql.Replace("SELECT ", $"SELECT {convertedToArray[0].Trim()} AS KeyLevel{depth}, ");
+        }
+
+        /// <summary>
+        /// The strip off json junk.
+        /// </summary>
+        /// <param name="withJsonJunk">
+        /// The with json junk.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        private string StripOffJsonJunk(string withJsonJunk)
+        {
+            return withJsonJunk.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ');
         }
 
         /// <summary>
@@ -277,7 +456,24 @@ namespace DataConverter
         /// </returns>
         private string GetCardinalityFromObjectReference(ObjectReference objectReference)
         {
-            return objectReference.AttributeValues.Where(x => x.AttributeName == "Cardinality")
+            return this.GetAttributeValueFromObjectReference(objectReference, "Cardinality");
+        }
+
+        /// <summary>
+        /// The get attribute value from object reference.
+        /// </summary>
+        /// <param name="objectReference">
+        /// The object reference.
+        /// </param>
+        /// <param name="attributeName">
+        /// The attribute name.
+        /// </param>
+        /// <returns>
+        /// The <see cref="string"/>.
+        /// </returns>
+        private string GetAttributeValueFromObjectReference(ObjectReference objectReference, string attributeName)
+        {
+            return objectReference.AttributeValues.Where(x => x.AttributeName == attributeName)
                 .Select(x => x.AttributeValue).FirstOrDefault();
         }
 
@@ -335,10 +531,71 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="ObjectReference"/>.
         /// </returns>
-        private List<ObjectReference> GetObjectRelationships(Binding binding)
+        private List<ObjectReference> GetChildObjectRelationships(Binding binding)
         {
-            var bindingRelationship = binding.ObjectRelationships.Where(x => x.ChildObjectType == "binding").ToList();
+            var bindingRelationship = binding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
             return bindingRelationship;
+        }
+
+        /// <summary>
+        /// The get parent object relationships.
+        /// </summary>
+        /// <param name="binding">
+        /// The binding.
+        /// </param>
+        /// <param name="allBindings">
+        /// The other bindings.
+        /// </param>
+        /// <returns>
+        /// The <see cref="List"/>.
+        /// </returns>
+        private List<BindingReference> GetParentObjectRelationships(Binding binding, Binding[] allBindings)
+        {
+            var bindingRelationships = new List<BindingReference>();
+            foreach (var otherBinding in allBindings)
+            {
+                bindingRelationships.AddRange(
+                    otherBinding.ObjectRelationships.Where(
+                        x => x.ChildObjectId == binding.Id && x.ChildObjectType == "Binding").Select(
+                        x => new BindingReference
+                                 {
+                                     ChildObjectId = x.ChildObjectId,
+                                     AttributeValues = x.AttributeValues,
+                                     ChildObjectType = x.ChildObjectType,
+                                     ParentObjectId = otherBinding.Id
+                                 }));
+            }
+
+            return bindingRelationships;
+        }
+
+        /// <summary>
+        /// The get all object relationships.
+        /// </summary>
+        /// <param name="binding">
+        /// The binding.
+        /// </param>
+        /// <param name="otherBindings">
+        /// The other bindings.
+        /// </param>
+        /// <returns>
+        /// The <see cref="List"/>.
+        /// </returns>
+        private List<BindingReference> GetAllObjectRelationships(Binding binding, Binding[] otherBindings)
+        {
+            var bindingRelationships = new List<BindingReference>();
+            bindingRelationships.AddRange(
+                this.GetChildObjectRelationships(binding).Select(
+                    x => new BindingReference
+                             {
+                                 ChildObjectId = x.ChildObjectId,
+                                 AttributeValues = x.AttributeValues,
+                                 ChildObjectType = x.ChildObjectType,
+                                 ParentObjectId = binding.Id
+                             }));
+
+            bindingRelationships.AddRange(this.GetParentObjectRelationships(binding, otherBindings));
+            return bindingRelationships;
         }
 
         /// <summary>
@@ -402,24 +659,6 @@ namespace DataConverter
         }
 
         /// <summary>
-        /// The get attribute value from binding.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="attributeName">
-        /// The attribute name.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string GetAttributeValueFromBinding(Binding binding, string attributeName)
-        {
-            return binding.AttributeValues.Where(x => x.AttributeName == attributeName)
-                .Select(x => x.AttributeValue).FirstOrDefault();
-        }
-
-        /// <summary>
         /// The get entity from binding.
         /// </summary>
         /// <param name="binding">
@@ -451,15 +690,14 @@ namespace DataConverter
         /// </returns>
         private string GetSqlFromEntity(Entity entity)
         {
-            // TODO: get key levels from parentKeyfields attribute on object relationship
             if (entity != null)
             {
                 var columns = "*";
                 if (entity.Fields != null && entity.Fields.Count > 0)
                 {
-                    columns = string.Join(",", entity.Fields.Select(x => x.FieldName));
+                    columns = string.Join(", ", entity.Fields.Where(x => x.Status != FieldStatus.Omitted).Select(x => x.FieldName));
                 }
-                
+
                 return $"select {columns} from [{this.GetDatabaseNameFromEntity(entity)}].[{this.GetSchemaNameFromEntity(entity)}].[{this.GetTableNameFromEntity(entity)}]";
             }
 
