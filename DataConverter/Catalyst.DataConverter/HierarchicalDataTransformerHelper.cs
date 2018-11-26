@@ -282,73 +282,7 @@ namespace DataConverter
 
             return newSqlString;
         }
-
-        /// <summary>
-        /// The get new sql string.
-        /// </summary>
-        /// <param name="originalString">
-        /// The original string.
-        /// </param>
-        /// <param name="replaceKey">
-        /// The replace key.
-        /// </param>
-        /// <param name="replaceValue">
-        /// The replace value.
-        /// </param>
-        /// <param name="depth">
-        /// The depth.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string GetNewSqlString(string originalString, string replaceKey, string replaceValue, int depth)
-        {
-            var regex = new Regex(Regex.Escape($" {replaceKey},"));
-
-            var newSqlString = regex.Replace(originalString, $" {replaceValue} AS KeyLevel{depth},", 1);
-            return newSqlString;
-        }
-
-        /// <summary>
-        /// The get key level column string.
-        /// </summary>
-        /// <param name="bindingReference">
-        /// The binding reference.
-        /// </param>
-        /// <param name="isParent">
-        /// The is parent.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Dictionary"/>.
-        /// </returns>
-        private KeyValuePair<string, string> GetKeyLevelColumnLookup(BindingReference bindingReference, bool isParent)
-        {
-            var replacementLookup = new KeyValuePair<string, string>(); 
-            var attributeValue = isParent
-                                     ? this.GetAttributeValueFromObjectReference(
-                                         new ObjectReference { AttributeValues = bindingReference.AttributeValues },
-                                         "ParentKeyFields")
-                                     : this.GetAttributeValueFromObjectReference(
-                                         new ObjectReference { AttributeValues = bindingReference.AttributeValues },
-                                         "ChildKeyFields");
-            var convertedToArray = attributeValue.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
-            if (convertedToArray.Length > 1)
-            {
-                // gotta concatenate
-                var concatenation = "CONCAT(" + string.Join(",'-',", convertedToArray.Select(x => x.Trim())) + ")";
-                foreach (var arrayValue in convertedToArray)
-                {
-                    replacementLookup = new KeyValuePair<string, string>(arrayValue.Trim(), concatenation);
-                }
-            }
-            else
-            {
-                replacementLookup = new KeyValuePair<string, string>(convertedToArray[0].Trim(), convertedToArray[0].Trim());
-            }
-
-            return replacementLookup;
-        }
-
+        
         /// <summary>
         /// The get key level sql.
         /// </summary>
@@ -374,20 +308,6 @@ namespace DataConverter
             }
 
             return originalSql.Replace("SELECT ", $"SELECT {convertedToArray[0].Trim()} AS KeyLevel{depth}, ");
-        }
-
-        /// <summary>
-        /// The strip off json junk.
-        /// </summary>
-        /// <param name="withJsonJunk">
-        /// The with json junk.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string StripOffJsonJunk(string withJsonJunk)
-        {
-            return withJsonJunk.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ');
         }
 
         /// <summary>
