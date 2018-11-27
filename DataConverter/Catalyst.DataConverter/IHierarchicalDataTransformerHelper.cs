@@ -134,8 +134,8 @@ namespace DataConverter
         /// <param name="bindings">
         /// The bindings.
         /// </param>
-        /// <param name="columnsAvailable">
-        /// The columns Available.
+        /// <param name="entity">
+        /// The entity.
         /// </param>
         /// <returns>
         /// The <see cref="string"/>.
@@ -145,6 +145,6 @@ namespace DataConverter
             Dictionary<int, List<int>> keyleveldepth,
             Binding binding,
             Binding[] bindings,
-            List<string> columnsAvailable);
+            Entity entity);
     }
 }

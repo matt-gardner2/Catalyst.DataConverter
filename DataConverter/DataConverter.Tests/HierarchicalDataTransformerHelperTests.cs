@@ -213,11 +213,23 @@ namespace UnitTestProject1
                                                                      = "ParentKeyFields",
                                                                  AttributeValue
                                                                      = "[ \"p1\" ]"
-                                                             }
+                                                             },
+                                                         new ObjectAttributeValue { AttributeName = "GenerationGap", AttributeValue = "1" }
                                                      },
                                                  ChildObjectType = "Binding"
-                                             }
+                                             },
+                                 new ObjectReference
+                                     {
+                                         ChildObjectId = 3,
+                                         AttributeValues =
+                                             {
+                                                                   new ObjectAttributeValue { AttributeName = "ChildKeyFields", AttributeValue = "[ \"p1\" ]" },
+                                                                   new ObjectAttributeValue { AttributeName = "ParentKeyFields", AttributeValue = "[ \"p1\" ]" },
+                                                                   new ObjectAttributeValue { AttributeName = "GenerationGap", AttributeValue = "2" }
+                                             },
+                                         ChildObjectType = "Binding"
                                      }
+                             }
                              };
             var child = new Binding
                             {
@@ -244,13 +256,14 @@ namespace UnitTestProject1
                                                                     = "ParentKeyFields",
                                                                 AttributeValue
                                                                     = "[ \"c1\", \"c2\" ]"
-                                                            }
+                                                            },
+                                                        new ObjectAttributeValue { AttributeName = "GenerationGap", AttributeValue = "1" }
                                                     },
                                                 ChildObjectType = "Binding"
                                             }
                                     }
                             };
-            var grandchild = new Binding { Id = 3};
+            var grandchild = new Binding { Id = 3 };
             var bindings = new List<Binding> { parent, child, grandchild };
             var keyleveldepth = new Dictionary<int, List<int>>
                                     {
@@ -261,14 +274,30 @@ namespace UnitTestProject1
             var parentSql = "SELECT p1, p2, Name, Address, Etc FROM [Database].[Schema].[Table]";
             var childSql = "SELECT p1, c1, c2, Name, Address, Etc FROM [Database].[Schema].[Table]";
             var grandchildSql = "SELECT c1, c2, g1, g2, Name, Address, Etc FROM [Database].[Schema].[Table]";
-            var columns = new List<string> { "p1", "p2", "Name", "Address", "Etc", "c1", "c2" };
-            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parent, bindings.ToArray(), columns);
-            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, child, bindings.ToArray(), columns);
-            var grandchildActual = helper.AddKeyLevels(grandchildSql, keyleveldepth, grandchild, bindings.ToArray(), columns);
+
+            var entity = new Entity
+                             {
+                                 Fields =
+                                     {
+                                         new Field { FieldName = "p1" },
+                                         new Field { FieldName = "p2" },
+                                         new Field { FieldName = "Name" },
+                                         new Field { FieldName = "Address" },
+                                         new Field { FieldName = "Etc" },
+                                         new Field { FieldName = "c1" },
+                                         new Field { FieldName = "c2" },
+                                         new Field { FieldName = "g1" },
+                                         new Field { FieldName = "g2" },
+                                     }
+                             };
+
+            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parent, bindings.ToArray(), entity);
+            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, child, bindings.ToArray(), entity);
+            var grandchildActual = helper.AddKeyLevels(grandchildSql, keyleveldepth, grandchild, bindings.ToArray(), entity);
 
             Assert.Equal("SELECT p1 AS KeyLevel1, p1, p2, Name, Address, Etc FROM [Database].[Schema].[Table]", parentActual);
             Assert.Equal("SELECT p1 AS KeyLevel1, CONCAT(c1,'-',c2) AS KeyLevel2, p1, c1, c2, Name, Address, Etc FROM [Database].[Schema].[Table]", childActual);
-            // Assert.Equal("SELECT CONCAT(c1,'-',c2) AS KeyLevel2, c1, c2, g1, g2, Name, Address, Etc FROM [Database].[Schema].[Table]", grandchildActual);
+            Assert.Equal("SELECT CONCAT(c1,'-',c2) AS KeyLevel2, p1 AS KeyLevel1, c1, c2, g1, g2, Name, Address, Etc FROM [Database].[Schema].[Table]", grandchildActual);
         }
 
         [Fact]
@@ -320,9 +349,20 @@ namespace UnitTestProject1
                                         { 1, new List<int> { 1 } },
                                         { 2, new List<int> { 2 } }
                                     };
-            var columns = new List<string> { "foo", "bar", "Name", "Address", "Etc" };
-            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parentBinding, bindings.ToArray(), columns);
-            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, childBinding, bindings.ToArray(), columns);
+
+            var entity = new Entity
+                             {
+                                 Fields =
+                                     {
+                                         new Field { FieldName = "foo" },
+                                         new Field { FieldName = "bar" },
+                                         new Field { FieldName = "Name" },
+                                         new Field { FieldName = "Address" },
+                                         new Field { FieldName = "Etc" },
+                                     }
+                             };
+            var parentActual = helper.AddKeyLevels(parentSql, keyleveldepth, parentBinding, bindings.ToArray(), entity);
+            var childActual = helper.AddKeyLevels(childSql, keyleveldepth, childBinding, bindings.ToArray(), entity);
 
             Assert.Equal("SELECT foo AS KeyLevel1, foo, Name, Address, Etc FROM [Database].[Schema].[Table]", parentActual);
             Assert.Equal("SELECT bar AS KeyLevel1, bar, Name, Address, Etc FROM [Database].[Schema].[Table]", childActual);

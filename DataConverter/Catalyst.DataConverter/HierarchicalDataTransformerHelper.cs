@@ -97,9 +97,8 @@ namespace DataConverter
             if (entity != null)
             {
                 var sql = this.GetSqlFromEntity(entity);
-                var allColumnsInEntity = entity.Fields.Select(x => x.FieldName).ToList();
 
-                sql = this.AddKeyLevels(sql, depthMap, binding, bindings, allColumnsInEntity);
+                sql = this.AddKeyLevels(sql, depthMap, binding, bindings, entity);
 
                 currentDataSources.Add(new DataSource { Path = entity.EntityName, Sql = sql });
             }
@@ -270,19 +269,19 @@ namespace DataConverter
         /// <param name="bindings">
         /// The bindings.
         /// </param>
-        /// <param name="columnsAvailable">
-        /// The columns Available.
+        /// <param name="entity">
+        /// The entity.
         /// </param>
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, List<string> columnsAvailable)
+        public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, Entity entity)
         {
-            var childObjectReferences = this.GetChildObjectRelationships(binding);
+            var descendantObjectRelationships = this.GetDescendantObjectRelationships(binding);
 
-            if (childObjectReferences.Any())
+            if (descendantObjectRelationships.Any())
             {
-                var singleResult = childObjectReferences.Select(
+                var singleResult = descendantObjectRelationships.Select(
                         x => x.AttributeValues.First(atr => atr.AttributeName == "ParentKeyFields").AttributeValue)
                     .Distinct().ToList();
                 if (singleResult.Count != 1)
@@ -294,7 +293,7 @@ namespace DataConverter
                 var myDepth = keyleveldepth.Where(x => x.Value.Contains(binding.Id)).Select(x => x.Key)
                     .FirstOrDefault();
                 var myColumn = singleResult.First();
-                currentSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, columnsAvailable);
+                currentSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, entity);
             }
 
 
@@ -307,7 +306,7 @@ namespace DataConverter
                     new ObjectReference { AttributeValues = bindingReference.AttributeValues },
                     "ChildKeyFields");
 
-                currentSqlString = this.GetKeyLevelSql(column, currentSqlString, depth, columnsAvailable);
+                currentSqlString = this.GetKeyLevelSql(column, currentSqlString, depth, entity);
             }
 
             return currentSqlString;
@@ -325,13 +324,13 @@ namespace DataConverter
         /// <param name="depth">
         /// The depth.
         /// </param>
-        /// <param name="columns">
-        /// The columns.
+        /// <param name="entity">
+        /// The entity.
         /// </param>
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, List<string> columns)
+        private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, Entity entity)
         {
             var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
             convertedToArray = convertedToArray.Select(x => x.Trim()).ToArray();
@@ -339,7 +338,7 @@ namespace DataConverter
             // make sure the column is in the source entity
             foreach (var field in convertedToArray)
             {
-                if (!columns.Contains(field))
+                if (entity.Fields.All(x => !string.Equals(x.FieldName, field, StringComparison.CurrentCultureIgnoreCase)))
                 {
                     return originalSql;
                 }
@@ -480,7 +479,26 @@ namespace DataConverter
         /// </returns>
         private List<ObjectReference> GetChildObjectRelationships(Binding binding)
         {
-            var bindingRelationship = binding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
+            var bindingRelationship = binding.ObjectRelationships.Where(
+                    or => or.ChildObjectType == "Binding"
+                          && or.AttributeValues.First(attr => attr.AttributeName == "GenerationGap").AttributeValue
+                          == "1")
+                .ToList();
+            return bindingRelationship;
+        }
+
+        /// <summary>
+        /// The get object relationship.
+        /// </summary>
+        /// <param name="binding">
+        /// The binding.
+        /// </param>
+        /// <returns>
+        /// The <see cref="ObjectReference"/>.
+        /// </returns>
+        private List<ObjectReference> GetDescendantObjectRelationships(Binding binding)
+        {
+            var bindingRelationship = binding.ObjectRelationships.Where(or => or.ChildObjectType == "Binding").ToList();
             return bindingRelationship;
         }
 
