@@ -56,7 +56,7 @@ namespace UnitTestProject1
             var outParam = new Dictionary<int, List<int>>();
             this.mockHelper.Setup(x => x.GenerateDataModel(It.IsAny<Binding>(), It.IsAny<Binding[]>(), out outParam)).Returns("{}");
             this.mockHelper
-                .Setup(x => x.GetDataSources(It.IsAny<Binding>(), It.IsAny<Binding[]>(), It.IsAny<List<DataSource>>(), outParam))
+                .Setup(x => x.GetDataSources(It.IsAny<Binding>(), It.IsAny<Binding[]>(), It.IsAny<List<DataSource>>(), outParam, It.IsAny<Entity>()))
                 .Returns(
                     Task.FromResult(
                         new List<DataSource>

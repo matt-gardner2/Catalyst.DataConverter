@@ -58,10 +58,13 @@ namespace DataConverter
         /// <param name="depthMap">
         /// The depth Map.
         /// </param>
+        /// <param name="destinationEntity">
+        /// The destination Entity.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task<List<DataSource>> GetDataSources(Binding binding, Binding[] bindings, List<DataSource> currentDataSources, Dictionary<int, List<int>> depthMap);
+        Task<List<DataSource>> GetDataSources(Binding binding, Binding[] bindings, List<DataSource> currentDataSources, Dictionary<int, List<int>> depthMap, Entity destinationEntity);
 
         /// <summary>
         /// The get bindings for entity async.

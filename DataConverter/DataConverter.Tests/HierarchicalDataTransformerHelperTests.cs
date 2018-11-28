@@ -385,7 +385,12 @@ namespace UnitTestProject1
             Assert.Equal("{\"identifier\":[],\"name\":[],\"communication\":[],\"us-core-race\":{\"extension\":[]},\"condition\":[{\"category\":{},\"code\":{}}]}", model);
 
 
-            var dataSources = await helper.GetDataSources(exampleModelParentBinding, bindingsArray, new List<DataSource>(), depthMap);             
+            var dataSources = await helper.GetDataSources(
+                                  exampleModelParentBinding,
+                                  bindingsArray,
+                                  new List<DataSource>(),
+                                  depthMap,
+                                  new Entity { Fields = { new Field() } });
         }
 
         #region helper methods

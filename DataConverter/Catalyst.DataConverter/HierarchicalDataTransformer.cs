@@ -19,8 +19,11 @@ namespace DataConverter
     using Catalyst.DataProcessing.Shared.Models.DataProcessing;
     using Catalyst.DataProcessing.Shared.Models.Metadata;
     using Catalyst.DataProcessing.Shared.Utilities.Client;
+    using Catalyst.DataProcessing.Shared.Utilities.Logging;
 
     using Fabric.Databus.Config;
+
+    using Newtonsoft.Json;
 
     using Unity;
 
@@ -40,12 +43,10 @@ namespace DataConverter
         /// <param name="metadataServiceClient">
         /// The metadata Service Client.
         /// </param>
-        /// <param name="helper">
-        /// The helper.
-        /// </param>
         public HierarchicalDataTransformer(IMetadataServiceClient metadataServiceClient)
         {
             this.helper = new HierarchicalDataTransformerHelper(metadataServiceClient);
+            LoggingHelper.Debug("We Got Here: HierarchicalDataTransformer!");
         }
 
         /// <summary>
@@ -72,16 +73,19 @@ namespace DataConverter
             Entity entity,
             CancellationToken cancellationToken)
         {
-            Console.WriteLine("We are in the hierarchical data transformer");
+            LoggingHelper.Debug("We are in the hierarchical data transformer");
             var bindings = await this.helper.GetBindingsForEntityAsync(entity.Id);
             var depthMap = new Dictionary<int, List<int>>();
             var dataModel = this.helper.GenerateDataModel(binding, bindings, out depthMap);
-            var dataSources = await this.helper.GetDataSources(binding, bindings, new List<DataSource>(), depthMap);
+            var dataSources = await this.helper.GetDataSources(binding, bindings, new List<DataSource>(), depthMap, entity);
 
             // TODO: JobData data = await this.helper.GetJobData();
             QueryConfig config = await this.helper.GetConfig();
-            
+            LoggingHelper.Debug("Here's our config file: " + JsonConvert.SerializeObject(config));
+
             var jobData = new JobData { DataModel = dataModel, MyDataSources = dataSources };
+            LoggingHelper.Debug("Here's our data model: " + JsonConvert.SerializeObject(dataModel));
+            LoggingHelper.Debug("Here are our data sources: " + JsonConvert.SerializeObject(dataSources));
 
             this.helper.RunDatabus(config, jobData);
             return Convert.ToInt64(1);
@@ -104,6 +108,8 @@ namespace DataConverter
         /// </returns>
         public bool CanHandle(BindingExecution bindingExecution, Binding binding, Entity destinationEntity)
         {
+            LoggingHelper.Debug("We got to the CanHandle Method");
+
             // check the binding to see whether it has a destination entity
             // where it has an endpoint attribute, httpverb
             return binding.BindingType == "Nested"; // BindingType.

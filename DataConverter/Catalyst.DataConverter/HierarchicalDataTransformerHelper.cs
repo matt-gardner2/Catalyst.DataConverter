@@ -21,6 +21,8 @@ namespace DataConverter
     using Catalyst.DataProcessing.Shared.Models.Enums;
     using Catalyst.DataProcessing.Shared.Models.Metadata;
     using Catalyst.DataProcessing.Shared.Utilities.Client;
+    using Catalyst.DataProcessing.Shared.Utilities.Logging;
+
     using Fabric.Databus.Client;
     using Fabric.Databus.Config;
 
@@ -46,6 +48,7 @@ namespace DataConverter
         /// </param>
         public HierarchicalDataTransformerHelper(IMetadataServiceClient serviceClient)
         {
+            LoggingHelper.Debug("We are in the DataTransformerHelper");
             this.serviceClient = serviceClient;
         }
 
@@ -60,6 +63,7 @@ namespace DataConverter
         /// </param>
         public void RunDatabus(QueryConfig config, JobData jobData)
         {
+            LoggingHelper.Debug("We are trying to run Databus");
             var job = new Job
             {
                 Config = config,
@@ -84,6 +88,9 @@ namespace DataConverter
         /// <param name="depthMap">
         /// The depth map.
         /// </param>
+        /// <param name="destinationEntity">
+        /// The destination Entity.
+        /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
@@ -91,16 +98,18 @@ namespace DataConverter
             Binding binding,
             Binding[] bindings,
             List<DataSource> currentDataSources, 
-            Dictionary<int, List<int>> depthMap)
+            Dictionary<int, List<int>> depthMap,
+            Entity destinationEntity)
         {
-            var entity = await this.GetEntityFromBinding(binding);
-            if (entity != null)
+            LoggingHelper.Debug("We are in GetDataSources");
+            var sourceEntity = await this.GetEntityFromBinding(binding);
+            if (sourceEntity != null)
             {
-                var sql = this.GetSqlFromEntity(entity);
+                var sql = this.GetSqlFromEntity(sourceEntity, destinationEntity);
 
-                sql = this.AddKeyLevels(sql, depthMap, binding, bindings, entity);
+                sql = this.AddKeyLevels(sql, depthMap, binding, bindings, sourceEntity);
 
-                currentDataSources.Add(new DataSource { Path = entity.EntityName, Sql = sql });
+                currentDataSources.Add(new DataSource { Path = sourceEntity.EntityName, Sql = sql });
             }
 
             var bindingRelationships = binding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
@@ -111,10 +120,12 @@ namespace DataConverter
                     var relationshipMatch = bindings.FirstOrDefault(x => x.Id == relationship.ChildObjectId);
                     if (relationshipMatch != null)
                     {
-                        await this.GetDataSources(relationshipMatch, bindings, currentDataSources, depthMap);
+                        await this.GetDataSources(relationshipMatch, bindings, currentDataSources, depthMap, destinationEntity);
                     }
                 }
             }
+
+            LoggingHelper.Debug("We are finishing up GetDataSources");
             return currentDataSources;
         }
 
@@ -130,6 +141,7 @@ namespace DataConverter
         /// </returns>
         public async Task<Binding[]> GetBindingsForEntityAsync(int entityId)
         {
+            LoggingHelper.Debug("We are in GetBindingsForEntityAsync");
             var bindings = await this.serviceClient.GetBindingsForEntityAsync(entityId);
             return bindings;
         }
@@ -151,11 +163,13 @@ namespace DataConverter
         /// </returns>
         public string GenerateDataModel(Binding binding, Binding[] bindings, out Dictionary<int, List<int>> bindingDepthMap)
         {
+            LoggingHelper.Debug("We are in GenerateDataModel");
             var sb = new StringBuilder();
             bindingDepthMap = new Dictionary<int, List<int>>();
             this.GetChildText(sb, binding, bindings, true, true, bindingDepthMap, 0);
             var serialized = sb.ToString();
             serialized = serialized.Replace(",}", "}");
+            LoggingHelper.Debug("Here's our data model: " + serialized);
             return serialized;
         } 
         
@@ -185,6 +199,7 @@ namespace DataConverter
         /// </param>
         public void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject, Dictionary<int, List<int>> depthMap, int depth)
         {
+            LoggingHelper.Debug("We are in GetChildText");
             var childObjectRelationships = this.GetChildObjectRelationships(binding);
             var hasChildren = childObjectRelationships.Count > 0;
 
@@ -251,6 +266,7 @@ namespace DataConverter
         /// </returns>
         public async Task<QueryConfig> GetConfig()
         {
+            LoggingHelper.Debug("We are in GetConfig");
             return await Task.Run(() => this.GetQueryConfigFromJsonFile());
         }
 
@@ -277,6 +293,7 @@ namespace DataConverter
         /// </returns>
         public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, Entity entity)
         {
+            LoggingHelper.Debug("We are in AddKeyLevels");
             var descendantObjectRelationships = this.GetDescendantObjectRelationships(binding);
 
             if (descendantObjectRelationships.Any())
@@ -332,6 +349,7 @@ namespace DataConverter
         /// </returns>
         private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, Entity entity)
         {
+            LoggingHelper.Debug("We are in GetKeyLevelSql");
             var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
             convertedToArray = convertedToArray.Select(x => x.Trim()).ToArray();
             
@@ -364,6 +382,7 @@ namespace DataConverter
         /// </returns>
         private QueryConfig GetQueryConfigFromJsonFile(string filePath = "config.json")
         {
+            LoggingHelper.Debug("We are in GetQueryConfigFromJsonFile");
             var json = System.IO.File.ReadAllText(filePath);
             var deserialzed = (dynamic)JsonConvert.DeserializeObject(json);
 
@@ -402,6 +421,7 @@ namespace DataConverter
         /// </returns>
         private string GetCardinalityFromObjectReference(ObjectReference objectReference)
         {
+            LoggingHelper.Debug("We are in GetCardinalityFromObjectReference");
             return this.GetAttributeValueFromObjectReference(objectReference, "Cardinality");
         }
 
@@ -419,6 +439,7 @@ namespace DataConverter
         /// </returns>
         private string GetAttributeValueFromObjectReference(ObjectReference objectReference, string attributeName)
         {
+            LoggingHelper.Debug("We are in GetAttributeValueFromObjectReference");
             return objectReference.AttributeValues.Where(x => x.AttributeName == attributeName)
                 .Select(x => x.AttributeValue).FirstOrDefault();
         }
@@ -434,6 +455,7 @@ namespace DataConverter
         /// </returns>
         private async Task<string> GetEntityName(Binding binding)
         {
+            LoggingHelper.Debug("We are in GetEntityName");
             if (binding == null)
             {
                 return null;
@@ -465,6 +487,7 @@ namespace DataConverter
         /// </returns>
         private Binding GetMatchingChild(Binding[] bindings, int relationshipId)
         {
+            LoggingHelper.Debug("We are in GetMatchingChild");
             return bindings.FirstOrDefault(x => x.Id == relationshipId);
         }
 
@@ -479,6 +502,7 @@ namespace DataConverter
         /// </returns>
         private List<ObjectReference> GetChildObjectRelationships(Binding binding)
         {
+            LoggingHelper.Debug("We are in GetChildObjectRelationships");
             var bindingRelationship = binding.ObjectRelationships.Where(
                     or => or.ChildObjectType == "Binding"
                           && or.AttributeValues.First(attr => attr.AttributeName == "GenerationGap").AttributeValue
@@ -498,6 +522,7 @@ namespace DataConverter
         /// </returns>
         private List<ObjectReference> GetDescendantObjectRelationships(Binding binding)
         {
+            LoggingHelper.Debug("We are in GetDescendantObjectRelationships");
             var bindingRelationship = binding.ObjectRelationships.Where(or => or.ChildObjectType == "Binding").ToList();
             return bindingRelationship;
         }
@@ -516,6 +541,7 @@ namespace DataConverter
         /// </returns>
         private List<BindingReference> GetParentObjectRelationships(Binding binding, Binding[] allBindings)
         {
+            LoggingHelper.Debug("We are in GetParentObjectRelationships");
             var bindingRelationships = new List<BindingReference>();
             foreach (var otherBinding in allBindings)
             {
@@ -548,6 +574,7 @@ namespace DataConverter
         /// </returns>
         private List<BindingReference> GetAllObjectRelationships(Binding binding, Binding[] otherBindings)
         {
+            LoggingHelper.Debug("We are in GetAllObjectRelationships");
             var bindingRelationships = new List<BindingReference>();
             bindingRelationships.AddRange(
                 this.GetChildObjectRelationships(binding).Select(
@@ -574,6 +601,7 @@ namespace DataConverter
         /// </returns>
         private string GetTableNameFromEntity(Entity entity)
         {
+            LoggingHelper.Debug("We are in GetTableNameFromEntity");
             return this.GetAttributeValueFromEntity(entity, AttributeValue.TableName);
         }
 
@@ -588,6 +616,7 @@ namespace DataConverter
         /// </returns>
         private string GetSchemaNameFromEntity(Entity entity)
         {
+            LoggingHelper.Debug("We are in GetSchemaNameFromEntity");
             return this.GetAttributeValueFromEntity(entity, AttributeValue.SchemaName);
         }
 
@@ -602,6 +631,7 @@ namespace DataConverter
         /// </returns>
         private string GetDatabaseNameFromEntity(Entity entity)
         {
+            LoggingHelper.Debug("We are in GetDatabaseNameFromEntity");
             return this.GetAttributeValueFromEntity(entity, AttributeValue.DatabaseName);
         }
 
@@ -619,6 +649,7 @@ namespace DataConverter
         /// </returns>
         private string GetAttributeValueFromEntity(Entity entity, string attributeName)
         {
+            LoggingHelper.Debug("We are in GetAttributeValueFromEntity");
             return entity.AttributeValues.Where(x => x.AttributeName == attributeName)
                 .Select(x => x.AttributeValue).FirstOrDefault();
         }
@@ -634,6 +665,7 @@ namespace DataConverter
         /// </returns>
         private async Task<Entity> GetEntityFromBinding(Binding binding)
         {
+            LoggingHelper.Debug("We are in GetEntityFromBinding");
             var entityReference = binding.SourcedByEntities.FirstOrDefault();
             if (entityReference != null)
             {
@@ -647,23 +679,36 @@ namespace DataConverter
         /// <summary>
         /// The get sql from entity.
         /// </summary>
-        /// <param name="entity">
-        /// The entity.
+        /// <param name="sourceEntity">
+        /// The source Entity.
+        /// </param>
+        /// <param name="destinationEntity">
+        /// The destination Entity.
         /// </param>
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        private string GetSqlFromEntity(Entity entity)
+        private string GetSqlFromEntity(Entity sourceEntity, Entity destinationEntity)
         {
-            if (entity != null)
+            LoggingHelper.Debug("We are in GetSqlFromEntity");
+            if (sourceEntity != null && destinationEntity != null)
             {
                 var columns = "*";
-                if (entity.Fields != null && entity.Fields.Count > 0)
+                if (sourceEntity.Fields != null && sourceEntity.Fields.Count > 0)
                 {
-                    columns = string.Join(", ", entity.Fields.Where(x => x.Status != FieldStatus.Omitted).Select(x => x.FieldName));
+                    columns = string.Join(
+                        ", ",
+                        sourceEntity.Fields
+                            .Where(
+                                field => destinationEntity
+                                    .Fields
+                                    .Any(
+                                        deField => deField.FieldName == $"{sourceEntity.EntityName}.{field.FieldName}"  
+                                                   && deField.Status != FieldStatus.Omitted))
+                            .Select(x => x.FieldName));
                 }
 
-                return $"select {columns} from [{this.GetDatabaseNameFromEntity(entity)}].[{this.GetSchemaNameFromEntity(entity)}].[{this.GetTableNameFromEntity(entity)}]";
+                return $"select {columns} from [{this.GetDatabaseNameFromEntity(sourceEntity)}].[{this.GetSchemaNameFromEntity(sourceEntity)}].[{this.GetTableNameFromEntity(sourceEntity)}]";
             }
 
             return null;
