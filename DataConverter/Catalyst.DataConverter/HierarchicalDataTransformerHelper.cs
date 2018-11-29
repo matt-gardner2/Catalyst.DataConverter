@@ -505,8 +505,8 @@ namespace DataConverter
             LoggingHelper.Debug("We are in GetChildObjectRelationships");
             var bindingRelationship = binding.ObjectRelationships.Where(
                     or => or.ChildObjectType == "Binding"
-                          && or.AttributeValues.First(attr => attr.AttributeName == "GenerationGap").AttributeValue
-                          == "1")
+                          && or.AttributeValues.First(attr => attr.AttributeName == "GenerationGap").ValueToInt()
+                          == 1)
                 .ToList();
             return bindingRelationship;
         }
