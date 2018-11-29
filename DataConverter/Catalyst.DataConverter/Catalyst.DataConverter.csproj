@@ -184,6 +184,7 @@
     <Compile Include="HierarchicalDataTransformer.cs" />
     <Compile Include="HierarchicalDataTransformerHelper.cs" />
     <Compile Include="IHierarchicalDataTransformerHelper.cs" />
+    <Compile Include="LoggingHelper2.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

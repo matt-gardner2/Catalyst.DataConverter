@@ -7,15 +7,13 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-
-
 namespace DataConverter
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Runtime.CompilerServices;
     using System.Text;
-    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using Catalyst.DataProcessing.Shared.Models.Enums;
@@ -48,22 +46,18 @@ namespace DataConverter
         /// </param>
         public HierarchicalDataTransformerHelper(IMetadataServiceClient serviceClient)
         {
-            LoggingHelper.Debug("We are in the DataTransformerHelper");
+            LoggingHelper2.Debug("Entering the DataTransformerHelper");
             this.serviceClient = serviceClient;
         }
 
         /// <summary>
-        /// The run databus.
+        /// Execute DataBus with the given configuration and job data
         /// </summary>
-        /// <param name="config">
-        /// The config.
-        /// </param>
-        /// <param name="jobData">
-        /// The job data.
-        /// </param>
+        /// <param name="config"></param>
+        /// <param name="jobData"></param>
         public void RunDatabus(QueryConfig config, JobData jobData)
         {
-            LoggingHelper.Debug("We are trying to run Databus");
+            LoggingHelper2.Debug("We are trying to run Databus");
             var job = new Job
             {
                 Config = config,
@@ -95,41 +89,50 @@ namespace DataConverter
         /// The <see cref="Task"/>.
         /// </returns>
         public async Task<List<DataSource>> GetDataSources(
-            Binding binding,
+            Binding tipBinding,
             Binding[] bindings,
             List<DataSource> currentDataSources, 
             Dictionary<int, List<int>> depthMap,
             Entity destinationEntity)
         {
-            LoggingHelper.Debug("We are in GetDataSources");
-            var sourceEntity = await this.GetEntityFromBinding(binding);
+            LoggingHelper2.Debug("Entering GetDataSources");
+            var sourceEntity = await this.GetEntityFromBinding(tipBinding);
             if (sourceEntity != null)
             {
                 var sql = this.GetSqlFromEntity(sourceEntity, destinationEntity);
 
-                sql = this.AddKeyLevels(sql, depthMap, binding, bindings, sourceEntity);
+                sql = this.AddKeyLevels(sql, depthMap, tipBinding, bindings, sourceEntity);
 
                 currentDataSources.Add(new DataSource { Path = sourceEntity.EntityName, Sql = sql });
             }
 
-            var bindingRelationships = binding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
+            var bindingRelationships = tipBinding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
             if (bindingRelationships.Count > 0)
             {
                 foreach (var relationship in bindingRelationships)
                 {
-                    var relationshipMatch = bindings.FirstOrDefault(x => x.Id == relationship.ChildObjectId);
-                    if (relationshipMatch != null)
+                    var nextTipBinding = bindings.FirstOrDefault(x => x.Id == relationship.ChildObjectId);
+                    if (nextTipBinding != null)
                     {
-                        await this.GetDataSources(relationshipMatch, bindings, currentDataSources, depthMap, destinationEntity);
+                        await this.GetDataSources(nextTipBinding, bindings, currentDataSources, depthMap, destinationEntity);
                     }
                 }
             }
 
-            LoggingHelper.Debug("We are finishing up GetDataSources");
+            LoggingHelper2.Debug("We are finishing up GetDataSources");
             return currentDataSources;
         }
 
+        public Binding GetTopMostBinding(Binding[] bindings)
+        {
+            if (bindings == null || bindings.Length == 0)
+            {
+                throw new InvalidOperationException("Could not get top most binding from a list with no bindings");
+            }
 
+            return bindings.First(binding => !this.GetParentObjectRelationships(binding, bindings).Any());
+        }
+        
         /// <summary>
         /// The get bindings for entity async.
         /// </summary>
@@ -139,85 +142,78 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        public async Task<Binding[]> GetBindingsForEntityAsync(int entityId)
+        public async Task<Binding[]> GetBindingsForEntityAsync(Entity entity)
         {
-            LoggingHelper.Debug("We are in GetBindingsForEntityAsync");
-            var bindings = await this.serviceClient.GetBindingsForEntityAsync(entityId);
-            return bindings;
+            LoggingHelper2.Debug("Entering GetBindingsForEntityAsync");
+            var bindingsForDataMart = await this.serviceClient.GetBindingsForDataMartAsync(entity.DataMartId);
+            return bindingsForDataMart.Where(binding => binding.DestinationEntityId == entity.Id).ToArray();
         }
 
         /// <summary>
-        /// The generate data model.
+        /// Generates the Data Model
         /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="bindings">
-        /// The bindings.
-        /// </param>
-        /// <param name="bindingDepthMap">
-        /// The binding Depth Map.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        public string GenerateDataModel(Binding binding, Binding[] bindings, out Dictionary<int, List<int>> bindingDepthMap)
+        /// <param name="topMostBinding"></param>
+        /// <param name="allBindings"></param>
+        /// <param name="bindingDepthMap"></param>
+        /// <returns></returns>
+        public async Task<DataModelDepthMap> GenerateDataModel(Binding topMostBinding, Binding[] allBindings)
         {
-            LoggingHelper.Debug("We are in GenerateDataModel");
+            LoggingHelper2.Debug("Entering GenerateDataModel(...)");
+            LoggingHelper2.Debug("topMostBinding: " + JsonConvert.SerializeObject(topMostBinding));
+            LoggingHelper2.Debug("Bindings: " + JsonConvert.SerializeObject(allBindings));
+
             var sb = new StringBuilder();
-            bindingDepthMap = new Dictionary<int, List<int>>();
-            this.GetChildText(sb, binding, bindings, true, true, bindingDepthMap, 0);
+            var bindingDepthMap = new Dictionary<int, List<int>>();
+            await this.GetChildText(sb, topMostBinding, allBindings, true, true, bindingDepthMap, 0);
             var serialized = sb.ToString();
             serialized = serialized.Replace(",}", "}");
-            LoggingHelper.Debug("Here's our data model: " + serialized);
-            return serialized;
+            LoggingHelper2.Debug("Here's our data model: " + serialized);
+            LoggingHelper2.Debug("Final DepthMap: " + JsonConvert.SerializeObject(bindingDepthMap));
+
+            return new DataModelDepthMap { DataModel = serialized, DepthMap = bindingDepthMap };
         } 
         
         /// <summary>
-        /// The get child text.
+        /// Gets the child text
         /// </summary>
-        /// <param name="builder">
-        /// The builder.
-        /// </param>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="bindings">
-        /// The bindings.
-        /// </param>
-        /// <param name="isFirst">
-        /// The is first.
-        /// </param>
-        /// <param name="isObject">
-        /// The is Object.
-        /// </param>
-        /// <param name="depthMap">
-        /// The depth Map.
-        /// </param>
-        /// <param name="depth">
-        /// The depth.
-        /// </param>
-        public void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject, Dictionary<int, List<int>> depthMap, int depth)
+        /// <param name="builder"></param>
+        /// <param name="thisBinding"></param>
+        /// <param name="allBindings"></param>
+        /// <param name="isFirst"></param>
+        /// <param name="isObject"></param>
+        /// <param name="depthMap"></param>
+        /// <param name="depth"></param>
+        public async Task GetChildText(StringBuilder builder, Binding thisBinding, Binding[] allBindings, bool isFirst, bool isObject, Dictionary<int, List<int>> depthMap, int depth)
         {
-            LoggingHelper.Debug("We are in GetChildText");
-            var childObjectRelationships = this.GetChildObjectRelationships(binding);
+            LoggingHelper2.Debug("Entering GetChildText(...)");
+            LoggingHelper2.Debug("Current Model: " + builder);
+            LoggingHelper2.Debug("thisBinding: " + JsonConvert.SerializeObject(thisBinding));
+            LoggingHelper2.Debug("allBindings: " + JsonConvert.SerializeObject(allBindings));
+            LoggingHelper2.Debug("isFirst: " + isFirst);
+            LoggingHelper2.Debug("isObject: " + isObject);
+            LoggingHelper2.Debug("depth: " + depth);
+
+            LoggingHelper2.Debug("Current DepthMap: " + JsonConvert.SerializeObject(depthMap));
+
+            var childObjectRelationships = this.GetChildObjectRelationships(thisBinding);
             var hasChildren = childObjectRelationships.Count > 0;
 
             if (!depthMap.ContainsKey(depth))
             {
-                depthMap.Add(depth, new List<int> { binding.Id });
+                depthMap.Add(depth, new List<int> { thisBinding.Id });
             }
             else
             {
-                depthMap[depth].Add(binding.Id);
+                depthMap[depth].Add(thisBinding.Id);
             }
 
-            var parameterName = $"\"{Task.Run(()=>this.GetEntityName(binding)).Result}\":";
+            var parameterName = $"\"{await this.GetEntityName(thisBinding)}\":";
 
             if (isFirst)
             {
                 parameterName = string.Empty;
             }
+
             if (!hasChildren)
             {
                 builder.Append(isObject ? $"{parameterName}" + "{}" : $"{parameterName}[]");
@@ -225,6 +221,7 @@ namespace DataConverter
                 {
                     builder.Append(",");
                 }
+
                 return;
             }
 
@@ -240,9 +237,9 @@ namespace DataConverter
             {
                 if (childObjectRelationship != null)
                 {
-                    var childBinding = this.GetMatchingChild(bindings, childObjectRelationship.ChildObjectId);
+                    var childBinding = this.GetMatchingChild(allBindings, childObjectRelationship.ChildObjectId);
                     var childIsObject = this.GetCardinalityFromObjectReference(childObjectRelationship) != "Array";
-                    this.GetChildText(builder, childBinding, bindings, false, childIsObject, depthMap, depth + 1);
+                    await this.GetChildText(builder, childBinding, allBindings, false, childIsObject, depthMap, depth + 1);
                 }
             }
 
@@ -258,42 +255,21 @@ namespace DataConverter
             }
         }
 
-        /// <summary>
-        /// The get config.
-        /// </summary>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         public async Task<QueryConfig> GetConfig()
         {
-            LoggingHelper.Debug("We are in GetConfig");
+            LoggingHelper2.Debug("Entering GetConfig(...)");
             return await Task.Run(() => this.GetQueryConfigFromJsonFile());
         }
 
-        /// <summary>
-        /// The add key levels.
-        /// </summary>
-        /// <param name="currentSqlString">
-        /// The current sql string.
-        /// </param>
-        /// <param name="keyleveldepth">
-        /// The keyleveldepth.
-        /// </param>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="bindings">
-        /// The bindings.
-        /// </param>
-        /// <param name="entity">
-        /// The entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
         public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, Entity entity)
         {
-            LoggingHelper.Debug("We are in AddKeyLevels");
+            LoggingHelper2.Debug("Entering AddKeyLevels(...)");
+            LoggingHelper2.Debug("currentSqlString: " + currentSqlString);
+            LoggingHelper2.Debug("keyleveldepth: " + JsonConvert.SerializeObject(keyleveldepth));
+            LoggingHelper2.Debug("binding: " + JsonConvert.SerializeObject(binding));
+            LoggingHelper2.Debug("bindings: " + JsonConvert.SerializeObject(bindings));
+            LoggingHelper2.Debug("entity: " + JsonConvert.SerializeObject(entity));
+
             var descendantObjectRelationships = this.GetDescendantObjectRelationships(binding);
 
             if (descendantObjectRelationships.Any())
@@ -313,7 +289,6 @@ namespace DataConverter
                 currentSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, entity);
             }
 
-
             var parentObjectReferences = this.GetParentObjectRelationships(binding, bindings);
             foreach (var bindingReference in parentObjectReferences)
             {
@@ -326,30 +301,19 @@ namespace DataConverter
                 currentSqlString = this.GetKeyLevelSql(column, currentSqlString, depth, entity);
             }
 
+            LoggingHelper2.Debug("KeyLevel'd Sql: " + currentSqlString);
+
             return currentSqlString;
         }
         
-        /// <summary>
-        /// The get key level sql.
-        /// </summary>
-        /// <param name="keyFieldsString">
-        /// The key fields string.
-        /// </param>
-        /// <param name="originalSql">
-        /// The original sql.
-        /// </param>
-        /// <param name="depth">
-        /// The depth.
-        /// </param>
-        /// <param name="entity">
-        /// The entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
         private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, Entity entity)
         {
-            LoggingHelper.Debug("We are in GetKeyLevelSql");
+            LoggingHelper2.Debug("Entering GetKeyLevelSql(...)");
+            LoggingHelper2.Debug($"keyFieldsString: {keyFieldsString}");
+            LoggingHelper2.Debug($"originalSql: {originalSql}");
+            LoggingHelper2.Debug($"depth: {depth}");
+            LoggingHelper2.Debug($"entity: {JsonConvert.SerializeObject(entity)}");
+
             var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
             convertedToArray = convertedToArray.Select(x => x.Trim()).ToArray();
             
@@ -371,18 +335,11 @@ namespace DataConverter
             return originalSql.Replace("SELECT ", $"SELECT {convertedToArray[0]} AS KeyLevel{depth}, ");
         }
 
-        /// <summary>
-        /// The get config json file.
-        /// </summary>
-        /// <param name="filePath">
-        /// The file path.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
         private QueryConfig GetQueryConfigFromJsonFile(string filePath = "config.json")
         {
-            LoggingHelper.Debug("We are in GetQueryConfigFromJsonFile");
+            LoggingHelper2.Debug("Entering GetQueryConfigFromJsonFile(...)");
+            LoggingHelper2.Debug($"filePath: {filePath}");
+
             var json = System.IO.File.ReadAllText(filePath);
             var deserialzed = (dynamic)JsonConvert.DeserializeObject(json);
 
@@ -410,142 +367,75 @@ namespace DataConverter
             return queryConfig;
         }
 
-        /// <summary>
-        /// The get cardinality from object reference.
-        /// </summary>
-        /// <param name="objectReference">
-        /// The object reference.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
         private string GetCardinalityFromObjectReference(ObjectReference objectReference)
         {
-            LoggingHelper.Debug("We are in GetCardinalityFromObjectReference");
+            LoggingHelper2.Debug("Entering GetCardinalityFromObjectReference(...)");
+            LoggingHelper2.Debug($"objectReference: {JsonConvert.SerializeObject(objectReference)}");
             return this.GetAttributeValueFromObjectReference(objectReference, "Cardinality");
         }
 
-        /// <summary>
-        /// The get attribute value from object reference.
-        /// </summary>
-        /// <param name="objectReference">
-        /// The object reference.
-        /// </param>
-        /// <param name="attributeName">
-        /// The attribute name.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
         private string GetAttributeValueFromObjectReference(ObjectReference objectReference, string attributeName)
         {
-            LoggingHelper.Debug("We are in GetAttributeValueFromObjectReference");
+            LoggingHelper2.Debug("Entering GetAttributeValueFromObjectReference(...)");
+            LoggingHelper2.Debug($"objectReference: {JsonConvert.SerializeObject(objectReference)}");
+            LoggingHelper2.Debug($"attributeName: {attributeName}");
+
             return objectReference.AttributeValues.Where(x => x.AttributeName == attributeName)
                 .Select(x => x.AttributeValue).FirstOrDefault();
         }
 
-        /// <summary>
-        /// The get entity name.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         private async Task<string> GetEntityName(Binding binding)
         {
-            LoggingHelper.Debug("We are in GetEntityName");
+            LoggingHelper2.Debug($"Entering GetEntityName({JsonConvert.SerializeObject(binding)})");
             if (binding == null)
             {
                 return null;
             }
+
             var entity = await this.GetEntityFromBinding(binding);
-            if (entity != null)
+            if (entity?.EntityName != null)
             {
-                if (entity.EntityName != null)
-                {
-                    return entity.EntityName;
-                }
+                LoggingHelper2.Debug($"Found EntityName: {entity.EntityName}");
+                return entity.EntityName;
             }
 
             return null;
         }
 
-
-        /// <summary>
-        /// The get matching child.
-        /// </summary>
-        /// <param name="bindings">
-        /// The bindings.
-        /// </param>
-        /// <param name="relationshipId">
-        /// The relationship id.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Binding"/>.
-        /// </returns>
-        private Binding GetMatchingChild(Binding[] bindings, int relationshipId)
+        private Binding GetMatchingChild(Binding[] bindings, int childBindingId)
         {
-            LoggingHelper.Debug("We are in GetMatchingChild");
-            return bindings.FirstOrDefault(x => x.Id == relationshipId);
+            LoggingHelper2.Debug("Entering GetMatchingChild(...)");
+            return bindings.FirstOrDefault(x => x.Id == childBindingId);
         }
 
-        /// <summary>
-        /// The get object relationship.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <returns>
-        /// The <see cref="ObjectReference"/>.
-        /// </returns>
         private List<ObjectReference> GetChildObjectRelationships(Binding binding)
         {
-            LoggingHelper.Debug("We are in GetChildObjectRelationships");
-            var bindingRelationship = binding.ObjectRelationships.Where(
+            LoggingHelper2.Debug("Entering GetChildObjectRelationships(...)");
+            var childRelationships = binding.ObjectRelationships.Where(
                     or => or.ChildObjectType == "Binding"
                           && or.AttributeValues.First(attr => attr.AttributeName == "GenerationGap").ValueToInt()
                           == 1)
                 .ToList();
-            return bindingRelationship;
+
+            LoggingHelper2.Debug($"Found the following childRelationships for binding with id = {binding.Id}: \n{JsonConvert.SerializeObject(childRelationships)}");
+            return childRelationships;
         }
 
-        /// <summary>
-        /// The get object relationship.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <returns>
-        /// The <see cref="ObjectReference"/>.
-        /// </returns>
         private List<ObjectReference> GetDescendantObjectRelationships(Binding binding)
         {
-            LoggingHelper.Debug("We are in GetDescendantObjectRelationships");
-            var bindingRelationship = binding.ObjectRelationships.Where(or => or.ChildObjectType == "Binding").ToList();
-            return bindingRelationship;
+            LoggingHelper2.Debug("Entering GetDescendantObjectRelationships(...)");
+            var descendantRelationships = binding.ObjectRelationships.Where(or => or.ChildObjectType == "Binding").ToList();
+            LoggingHelper2.Debug($"Found the following descendantRelationships for binding with id = {binding.Id}: \n{JsonConvert.SerializeObject(descendantRelationships)}");
+            return descendantRelationships;
         }
 
-        /// <summary>
-        /// The get parent object relationships.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="allBindings">
-        /// The other bindings.
-        /// </param>
-        /// <returns>
-        /// The <see cref="List"/>.
-        /// </returns>
         private List<BindingReference> GetParentObjectRelationships(Binding binding, Binding[] allBindings)
         {
-            LoggingHelper.Debug("We are in GetParentObjectRelationships");
-            var bindingRelationships = new List<BindingReference>();
+            LoggingHelper2.Debug("Entering GetParentObjectRelationships(...)");
+            var parentRelationships = new List<BindingReference>();
             foreach (var otherBinding in allBindings)
             {
-                bindingRelationships.AddRange(
+                parentRelationships.AddRange(
                     otherBinding.ObjectRelationships.Where(
                         x => x.ChildObjectId == binding.Id && x.ChildObjectType == "Binding").Select(
                         x => new BindingReference
@@ -557,143 +447,35 @@ namespace DataConverter
                                  }));
             }
 
-            return bindingRelationships;
+            LoggingHelper2.Debug($"Found the following parentRelationships for binding with id = {binding.Id}: \n{JsonConvert.SerializeObject(parentRelationships)}");
+
+            return parentRelationships;
         }
 
-        /// <summary>
-        /// The get all object relationships.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="otherBindings">
-        /// The other bindings.
-        /// </param>
-        /// <returns>
-        /// The <see cref="List"/>.
-        /// </returns>
-        private List<BindingReference> GetAllObjectRelationships(Binding binding, Binding[] otherBindings)
-        {
-            LoggingHelper.Debug("We are in GetAllObjectRelationships");
-            var bindingRelationships = new List<BindingReference>();
-            bindingRelationships.AddRange(
-                this.GetChildObjectRelationships(binding).Select(
-                    x => new BindingReference
-                             {
-                                 ChildObjectId = x.ChildObjectId,
-                                 AttributeValues = x.AttributeValues,
-                                 ChildObjectType = x.ChildObjectType,
-                                 ParentObjectId = binding.Id
-                             }));
-
-            bindingRelationships.AddRange(this.GetParentObjectRelationships(binding, otherBindings));
-            return bindingRelationships;
-        }
-
-        /// <summary>
-        /// The get table name from entity.
-        /// </summary>
-        /// <param name="entity">
-        /// The entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string GetTableNameFromEntity(Entity entity)
-        {
-            LoggingHelper.Debug("We are in GetTableNameFromEntity");
-            return this.GetAttributeValueFromEntity(entity, AttributeValue.TableName);
-        }
-
-        /// <summary>
-        /// The get schema name from entity.
-        /// </summary>
-        /// <param name="entity">
-        /// The entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string GetSchemaNameFromEntity(Entity entity)
-        {
-            LoggingHelper.Debug("We are in GetSchemaNameFromEntity");
-            return this.GetAttributeValueFromEntity(entity, AttributeValue.SchemaName);
-        }
-
-        /// <summary>
-        /// The get database name from entity.
-        /// </summary>
-        /// <param name="entity">
-        /// The entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string GetDatabaseNameFromEntity(Entity entity)
-        {
-            LoggingHelper.Debug("We are in GetDatabaseNameFromEntity");
-            return this.GetAttributeValueFromEntity(entity, AttributeValue.DatabaseName);
-        }
-
-        /// <summary>
-        /// The get attribute value from entity.
-        /// </summary>
-        /// <param name="entity">
-        /// The entity.
-        /// </param>
-        /// <param name="attributeName">
-        /// The attribute name.
-        /// </param>
-        /// <returns>
-        /// The <see cref="string"/>.
-        /// </returns>
-        private string GetAttributeValueFromEntity(Entity entity, string attributeName)
-        {
-            LoggingHelper.Debug("We are in GetAttributeValueFromEntity");
-            return entity.AttributeValues.Where(x => x.AttributeName == attributeName)
-                .Select(x => x.AttributeValue).FirstOrDefault();
-        }
-
-        /// <summary>
-        /// The get entity from binding.
-        /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         private async Task<Entity> GetEntityFromBinding(Binding binding)
         {
-            LoggingHelper.Debug("We are in GetEntityFromBinding");
-            var entityReference = binding.SourcedByEntities.FirstOrDefault();
+            LoggingHelper2.Debug("Entering GetEntityFromBinding(...)");
+            LoggingHelper2.Debug("binding: " + JsonConvert.SerializeObject(binding));
+            var entityReference = binding.SourcedByEntities.FirstOrDefault(); 
             if (entityReference != null)
             {
                 var entity = await this.serviceClient.GetEntityAsync(entityReference.SourceEntityId);
+                LoggingHelper2.Debug($"Found source entity ({entity.EntityName}) for binding (id = {binding.Id})");
                 return entity;
             }
 
             return null;
         }
 
-        /// <summary>
-        /// The get sql from entity.
-        /// </summary>
-        /// <param name="sourceEntity">
-        /// The source Entity.
-        /// </param>
-        /// <param name="destinationEntity">
-        /// The destination Entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
         private string GetSqlFromEntity(Entity sourceEntity, Entity destinationEntity)
         {
-            LoggingHelper.Debug("We are in GetSqlFromEntity");
+            LoggingHelper2.Debug("Entering GetSqlFromEntity");
+            LoggingHelper2.Debug($"sourceEntity: {JsonConvert.SerializeObject(sourceEntity)}");
+            LoggingHelper2.Debug($"destinationEntity: {JsonConvert.SerializeObject(destinationEntity)}");
+
             if (sourceEntity != null && destinationEntity != null)
             {
-                var columns = "*";
+                var columns = "*"; //TODO Here
                 if (sourceEntity.Fields != null && sourceEntity.Fields.Count > 0)
                 {
                     columns = string.Join(
@@ -703,15 +485,22 @@ namespace DataConverter
                                 field => destinationEntity
                                     .Fields
                                     .Any(
-                                        deField => deField.FieldName == $"{sourceEntity.EntityName}.{field.FieldName}"  
+                                        deField => deField.FieldName == $"{sourceEntity.EntityName}_{field.FieldName}"  
                                                    && deField.Status != FieldStatus.Omitted))
                             .Select(x => x.FieldName));
                 }
 
-                return $"select {columns} from [{this.GetDatabaseNameFromEntity(sourceEntity)}].[{this.GetSchemaNameFromEntity(sourceEntity)}].[{this.GetTableNameFromEntity(sourceEntity)}]";
+                return $"select {columns} from [{sourceEntity.DatabaseName}].[{sourceEntity.SchemaName}].[{sourceEntity.TableName}]";
             }
 
             return null;
+        }
+
+        public class DataModelDepthMap
+        {
+            public string DataModel { get; set; }
+
+            public Dictionary<int, List<int>> DepthMap { get; set; }
         }
     }
 }

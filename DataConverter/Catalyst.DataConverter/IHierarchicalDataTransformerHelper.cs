@@ -41,7 +41,14 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        string GenerateDataModel(Binding binding, Binding[] bindings, out Dictionary<int, List<int>> depthMap);
+        Task<HierarchicalDataTransformerHelper.DataModelDepthMap> GenerateDataModel(Binding topMostBinding, Binding[] bindings);
+
+        /// <summary>
+        /// Get the top most binding in the hierarchy
+        /// </summary>
+        /// <param name="bindings"></param>
+        /// <returns></returns>
+        Binding GetTopMostBinding(Binding[] bindings);
 
         /// <summary>
         /// The get data sources.
@@ -64,7 +71,7 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task<List<DataSource>> GetDataSources(Binding binding, Binding[] bindings, List<DataSource> currentDataSources, Dictionary<int, List<int>> depthMap, Entity destinationEntity);
+        Task<List<DataSource>> GetDataSources(Binding topMostBinding, Binding[] bindings, List<DataSource> currentDataSources, Dictionary<int, List<int>> depthMap, Entity destinationEntity);
 
         /// <summary>
         /// The get bindings for entity async.
@@ -75,7 +82,7 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="Task"/>.
         /// </returns>
-        Task<Binding[]> GetBindingsForEntityAsync(int entityId);
+        Task<Binding[]> GetBindingsForEntityAsync(Entity entity);
 
         /// <summary>
         /// The run databus.
@@ -112,7 +119,7 @@ namespace DataConverter
         /// <param name="depth">
         /// The depth.
         /// </param>
-        void GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject,Dictionary<int, List<int>> depthMap, int depth);
+        Task GetChildText(StringBuilder builder, Binding binding, Binding[] bindings, bool isFirst, bool isObject,Dictionary<int, List<int>> depthMap, int depth);
 
         /// <summary>
         /// The get config.

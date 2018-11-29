@@ -11,7 +11,6 @@ namespace DataConverter
 {
     using System;
     using System.Collections.Generic;
-    using System.Dynamic;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -24,8 +23,6 @@ namespace DataConverter
     using Fabric.Databus.Config;
 
     using Newtonsoft.Json;
-
-    using Unity;
 
     /// <summary>
     /// The hierarchical data transformer.
@@ -46,7 +43,7 @@ namespace DataConverter
         public HierarchicalDataTransformer(IMetadataServiceClient metadataServiceClient)
         {
             this.helper = new HierarchicalDataTransformerHelper(metadataServiceClient);
-            LoggingHelper.Debug("We Got Here: HierarchicalDataTransformer!");
+            LoggingHelper2.Debug("We Got Here: HierarchicalDataTransformer!");
         }
 
         /// <summary>
@@ -73,19 +70,24 @@ namespace DataConverter
             Entity entity,
             CancellationToken cancellationToken)
         {
-            LoggingHelper.Debug("We are in the hierarchical data transformer");
-            var bindings = await this.helper.GetBindingsForEntityAsync(entity.Id);
-            var depthMap = new Dictionary<int, List<int>>();
-            var dataModel = this.helper.GenerateDataModel(binding, bindings, out depthMap);
-            var dataSources = await this.helper.GetDataSources(binding, bindings, new List<DataSource>(), depthMap, entity);
+            LoggingHelper2.Debug("We are in the hierarchical data transformer");
+            LoggingHelper2.Debug("Binding: " + JsonConvert.SerializeObject(binding));
+            LoggingHelper2.Debug("Entity: " + JsonConvert.SerializeObject(entity));
+
+            Binding[] allBindings = await this.helper.GetBindingsForEntityAsync(entity);
+            Binding topMostBinding = this.helper.GetTopMostBinding(allBindings);
+
+            HierarchicalDataTransformerHelper.DataModelDepthMap dataModel = await this.helper.GenerateDataModel(topMostBinding, allBindings);
+            var dataSources = await this.helper.GetDataSources(topMostBinding, allBindings, new List<DataSource>(), dataModel.DepthMap, entity);
 
             // TODO: JobData data = await this.helper.GetJobData();
             QueryConfig config = await this.helper.GetConfig();
-            LoggingHelper.Debug("Here's our config file: " + JsonConvert.SerializeObject(config));
+            LoggingHelper2.Debug("QueryConfig: " + JsonConvert.SerializeObject(config));
 
-            var jobData = new JobData { DataModel = dataModel, MyDataSources = dataSources };
-            LoggingHelper.Debug("Here's our data model: " + JsonConvert.SerializeObject(dataModel));
-            LoggingHelper.Debug("Here are our data sources: " + JsonConvert.SerializeObject(dataSources));
+            var jobData = new JobData { DataModel = dataModel.DataModel, MyDataSources = dataSources };
+
+            LoggingHelper2.Debug("Final Data Model: " + JsonConvert.SerializeObject(dataModel.DataModel));
+            LoggingHelper2.Debug("Final Data Sources: " + JsonConvert.SerializeObject(dataSources));
 
             this.helper.RunDatabus(config, jobData);
             return Convert.ToInt64(1);
@@ -108,7 +110,7 @@ namespace DataConverter
         /// </returns>
         public bool CanHandle(BindingExecution bindingExecution, Binding binding, Entity destinationEntity)
         {
-            LoggingHelper.Debug("We got to the CanHandle Method");
+            LoggingHelper2.Debug("We got to the CanHandle Method");
 
             // check the binding to see whether it has a destination entity
             // where it has an endpoint attribute, httpverb
