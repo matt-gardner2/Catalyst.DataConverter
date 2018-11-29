@@ -1,6 +1,6 @@
 ﻿{
-    'ConnectionString' : 'server=HC2260;initial catalog=EDWAdmin;Trusted_Connection=True;',
-    'Url' : 'https://HC2260.hqcatalyst.local/DataProcessingService/v1/BatchExecutions',
+    'ConnectionString' : 'server=localhost;initial catalog=EDWAdmin;Trusted_Connection=True;',
+    'Url' : 'https://hc2342.hqcatalyst.local/DataProcessingService/v1/BatchExecutions',
     'MaximumEntitiesToLoad' : 1000,
     'EntitiesPerBatch' : 100,
     'EntitiesPerUploadFile' : 100,

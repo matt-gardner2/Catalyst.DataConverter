@@ -150,7 +150,7 @@ namespace DataConverter
         /// <returns>
         /// The <see cref="string"/>.
         /// </returns>
-        string AddKeyLevels(
+        Task<string> AddKeyLevels(
             string currentSqlString,
             Dictionary<int, List<int>> keyleveldepth,
             Binding binding,

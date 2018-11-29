@@ -75,10 +75,9 @@ namespace DataConverter
             LoggingHelper2.Debug("Entity: " + JsonConvert.SerializeObject(entity));
 
             Binding[] allBindings = await this.helper.GetBindingsForEntityAsync(entity);
-            Binding topMostBinding = this.helper.GetTopMostBinding(allBindings);
 
-            HierarchicalDataTransformerHelper.DataModelDepthMap dataModel = await this.helper.GenerateDataModel(topMostBinding, allBindings);
-            var dataSources = await this.helper.GetDataSources(topMostBinding, allBindings, new List<DataSource>(), dataModel.DepthMap, entity);
+            HierarchicalDataTransformerHelper.DataModelDepthMap dataModel = await this.helper.GenerateDataModel(binding, allBindings);
+            var dataSources = await this.helper.GetDataSources(binding, allBindings, new List<DataSource>(), dataModel.DepthMap, entity);
 
             // TODO: JobData data = await this.helper.GetJobData();
             QueryConfig config = await this.helper.GetConfig();
@@ -112,9 +111,27 @@ namespace DataConverter
         {
             LoggingHelper2.Debug("We got to the CanHandle Method");
 
+            Binding topMost = null;
+            try
+            {
+                Binding[] allBindings = this.helper.GetBindingsForEntityAsync(destinationEntity).Result;
+                topMost = this.helper.GetTopMostBinding(allBindings);
+                LoggingHelper2.Debug($"All bindings: {JsonConvert.SerializeObject(allBindings)}");
+                LoggingHelper2.Debug($"binding: {JsonConvert.SerializeObject(binding)}");
+                LoggingHelper2.Debug($"TopMost: {JsonConvert.SerializeObject(topMost)}");
+                LoggingHelper2.Debug($"Is topmost??: {binding.Id == topMost.Id}");
+            }
+            catch (Exception e)
+            {
+                LoggingHelper2.Debug($"Threw exception: {e}");
+                throw;
+            }
+
+
             // check the binding to see whether it has a destination entity
             // where it has an endpoint attribute, httpverb
-            return binding.BindingType == "Nested"; // BindingType.
+            return binding.BindingType == "Nested" 
+                   && binding.Id == topMost.Id; // BindingType.
         }
     }
 }

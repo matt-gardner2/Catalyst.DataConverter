@@ -12,8 +12,8 @@ namespace DataConverter
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Runtime.CompilerServices;
     using System.Text;
+    using System.Text.RegularExpressions;
     using System.Threading;
     using System.Threading.Tasks;
     using Catalyst.DataProcessing.Shared.Models.Enums;
@@ -63,31 +63,28 @@ namespace DataConverter
                 Config = config,
                 Data = jobData
             };
-            var runner = new DatabusRunner();
-            runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
-        }
+            try
+            {
+                var runner = new DatabusRunner();
+                runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
+            }
+            catch (Exception e)
+            {
+                LoggingHelper2.Debug($"Exception thrown by Databus: {e}");
+            }
 
+            LoggingHelper2.Debug("Finished executing Databus");
+        }
+        
         /// <summary>
-        /// The get data sources.
+        /// Get the Data Sources that DataBus needs for the given bindings
         /// </summary>
-        /// <param name="binding">
-        /// The binding.
-        /// </param>
-        /// <param name="bindings">
-        /// The bindings.
-        /// </param>
-        /// <param name="currentDataSources">
-        /// The current data sources.
-        /// </param>
-        /// <param name="depthMap">
-        /// The depth map.
-        /// </param>
-        /// <param name="destinationEntity">
-        /// The destination Entity.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
+        /// <param name="tipBinding"></param>
+        /// <param name="bindings"></param>
+        /// <param name="currentDataSources"></param>
+        /// <param name="depthMap"></param>
+        /// <param name="destinationEntity"></param>
+        /// <returns></returns>
         public async Task<List<DataSource>> GetDataSources(
             Binding tipBinding,
             Binding[] bindings,
@@ -99,9 +96,9 @@ namespace DataConverter
             var sourceEntity = await this.GetEntityFromBinding(tipBinding);
             if (sourceEntity != null)
             {
-                var sql = this.GetSqlFromEntity(sourceEntity, destinationEntity);
+                var sql = await this.GetSqlFromEntity(sourceEntity, destinationEntity);
 
-                sql = this.AddKeyLevels(sql, depthMap, tipBinding, bindings, sourceEntity);
+                sql = await this.AddKeyLevels(sql, depthMap, tipBinding, bindings, sourceEntity);
 
                 currentDataSources.Add(new DataSource { Path = sourceEntity.EntityName, Sql = sql });
             }
@@ -127,6 +124,7 @@ namespace DataConverter
         {
             if (bindings == null || bindings.Length == 0)
             {
+                LoggingHelper2.Debug("ERROR - Throwing exception: Could not get top most binding from a list with no bindings");
                 throw new InvalidOperationException("Could not get top most binding from a list with no bindings");
             }
 
@@ -134,14 +132,10 @@ namespace DataConverter
         }
         
         /// <summary>
-        /// The get bindings for entity async.
+        /// Get all bindings whose destination entity is the given entity
         /// </summary>
-        /// <param name="entityId">
-        /// The entity id.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
+        /// <param name="entity"></param>
+        /// <returns></returns>
         public async Task<Binding[]> GetBindingsForEntityAsync(Entity entity)
         {
             LoggingHelper2.Debug("Entering GetBindingsForEntityAsync");
@@ -150,11 +144,10 @@ namespace DataConverter
         }
 
         /// <summary>
-        /// Generates the Data Model
+        /// Generate the data model string and depth map for the given bindings, given the top-most Binding as a starting point
         /// </summary>
         /// <param name="topMostBinding"></param>
         /// <param name="allBindings"></param>
-        /// <param name="bindingDepthMap"></param>
         /// <returns></returns>
         public async Task<DataModelDepthMap> GenerateDataModel(Binding topMostBinding, Binding[] allBindings)
         {
@@ -261,7 +254,7 @@ namespace DataConverter
             return await Task.Run(() => this.GetQueryConfigFromJsonFile());
         }
 
-        public string AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, Entity entity)
+        public async Task<string> AddKeyLevels(string currentSqlString, Dictionary<int, List<int>> keyleveldepth, Binding binding, Binding[] bindings, Entity entity)
         {
             LoggingHelper2.Debug("Entering AddKeyLevels(...)");
             LoggingHelper2.Debug("currentSqlString: " + currentSqlString);
@@ -279,6 +272,7 @@ namespace DataConverter
                     .Distinct().ToList();
                 if (singleResult.Count != 1)
                 {
+                    LoggingHelper2.Debug($"Threw exception: All of the children for this binding ({binding.Id}) do not have the same parent key designation");
                     throw new InvalidOperationException(
                         $"All of the children for this binding ({binding.Id}) do not have the same parent key designation.");
                 }
@@ -286,7 +280,7 @@ namespace DataConverter
                 var myDepth = keyleveldepth.Where(x => x.Value.Contains(binding.Id)).Select(x => x.Key)
                     .FirstOrDefault();
                 var myColumn = singleResult.First();
-                currentSqlString = this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, entity);
+                currentSqlString = await this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, entity);
             }
 
             var parentObjectReferences = this.GetParentObjectRelationships(binding, bindings);
@@ -298,7 +292,7 @@ namespace DataConverter
                     new ObjectReference { AttributeValues = bindingReference.AttributeValues },
                     "ChildKeyFields");
 
-                currentSqlString = this.GetKeyLevelSql(column, currentSqlString, depth, entity);
+                currentSqlString = await this.GetKeyLevelSql(column, currentSqlString, depth, entity);
             }
 
             LoggingHelper2.Debug("KeyLevel'd Sql: " + currentSqlString);
@@ -306,21 +300,23 @@ namespace DataConverter
             return currentSqlString;
         }
         
-        private string GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, Entity entity)
+        private async Task<string> GetKeyLevelSql(string keyFieldsString, string originalSql, int depth, Entity sourceEntity)
         {
             LoggingHelper2.Debug("Entering GetKeyLevelSql(...)");
             LoggingHelper2.Debug($"keyFieldsString: {keyFieldsString}");
             LoggingHelper2.Debug($"originalSql: {originalSql}");
             LoggingHelper2.Debug($"depth: {depth}");
-            LoggingHelper2.Debug($"entity: {JsonConvert.SerializeObject(entity)}");
+            LoggingHelper2.Debug($"entity: {JsonConvert.SerializeObject(sourceEntity)}");
 
             var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
             convertedToArray = convertedToArray.Select(x => x.Trim()).ToArray();
-            
+
+            Field[] sourceEntityFields = await this.serviceClient.GetEntityFieldsAsync(sourceEntity);
+
             // make sure the column is in the source entity
             foreach (var field in convertedToArray)
             {
-                if (entity.Fields.All(x => !string.Equals(x.FieldName, field, StringComparison.CurrentCultureIgnoreCase)))
+                if (sourceEntityFields.All(x => !string.Equals(x.FieldName, field, StringComparison.CurrentCultureIgnoreCase)))
                 {
                     return originalSql;
                 }
@@ -329,10 +325,14 @@ namespace DataConverter
             if (convertedToArray.Length > 1)
             {
                 // gotta concatenate
-                return originalSql.Replace("SELECT ", $"SELECT CONCAT({string.Join(",'-',", convertedToArray)}) AS KeyLevel{depth}, ");
+                return Regex.Replace(originalSql, "select ", $"SELECT CONCAT({string.Join(",'-',", convertedToArray)}) AS KeyLevel{depth}, ", RegexOptions.IgnoreCase);
+                
+                // return originalSql.ToUpper().Replace("SELECT ", $"SELECT CONCAT({string.Join(",'-',", convertedToArray)}) AS KeyLevel{depth}, ");
             }
 
-            return originalSql.Replace("SELECT ", $"SELECT {convertedToArray[0]} AS KeyLevel{depth}, ");
+            return Regex.Replace(originalSql, "select ", $"SELECT {convertedToArray[0]} AS KeyLevel{depth}, ", RegexOptions.IgnoreCase);
+
+            // return originalSql.ToUpper().Replace("SELECT ", $"SELECT {convertedToArray[0]} AS KeyLevel{depth}, ");
         }
 
         private QueryConfig GetQueryConfigFromJsonFile(string filePath = "config.json")
@@ -467,7 +467,7 @@ namespace DataConverter
             return null;
         }
 
-        private string GetSqlFromEntity(Entity sourceEntity, Entity destinationEntity)
+        private async Task<string> GetSqlFromEntity(Entity sourceEntity, Entity destinationEntity)
         {
             LoggingHelper2.Debug("Entering GetSqlFromEntity");
             LoggingHelper2.Debug($"sourceEntity: {JsonConvert.SerializeObject(sourceEntity)}");
@@ -475,12 +475,13 @@ namespace DataConverter
 
             if (sourceEntity != null && destinationEntity != null)
             {
-                var columns = "*"; //TODO Here
-                if (sourceEntity.Fields != null && sourceEntity.Fields.Count > 0)
+                Field[] sourceEntityFields = await this.serviceClient.GetEntityFieldsAsync(sourceEntity);
+                var columns = "*"; 
+                if (sourceEntityFields != null && sourceEntityFields.Length > 0)
                 {
                     columns = string.Join(
                         ", ",
-                        sourceEntity.Fields
+                        sourceEntityFields
                             .Where(
                                 field => destinationEntity
                                     .Fields
