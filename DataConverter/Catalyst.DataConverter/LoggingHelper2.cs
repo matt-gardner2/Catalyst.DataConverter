@@ -21,7 +21,7 @@
                 {
                     LoggingHelper.Debug(message); //This is no longer working for some reason
                     File.AppendAllText(
-                        @"C:\Program Files\Health Catalyst\Data-Processing Engine\logs\DataProcessingEngine.log",
+                        @"C:\Program Files\Health Catalyst\Data-Processing Engine\logs\DataProcessingEngine2.log",
                         $"{DateTime.Now} - HierarchicalDataTransformer: {message}\n\n");
 
                 }
