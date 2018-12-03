@@ -70,24 +70,10 @@ namespace DataConverter
             Entity entity,
             CancellationToken cancellationToken)
         {
-            LoggingHelper2.Debug("We are in the hierarchical data transformer");
-            LoggingHelper2.Debug("Binding: " + JsonConvert.SerializeObject(binding));
-            LoggingHelper2.Debug("Entity: " + JsonConvert.SerializeObject(entity));
+            var config = await this.helper.GetConfig();
 
-            Binding[] allBindings = await this.helper.GetBindingsForEntityAsync(entity);
-
-            HierarchicalDataTransformerHelper.DataModelDepthMap dataModel = await this.helper.GenerateDataModel(binding, allBindings);
-            var dataSources = await this.helper.GetDataSources(binding, allBindings, new List<DataSource>(), dataModel.DepthMap, entity);
-
-            // TODO: JobData data = await this.helper.GetJobData();
-            QueryConfig config = await this.helper.GetConfig();
-            LoggingHelper2.Debug("QueryConfig: " + JsonConvert.SerializeObject(config));
-
-            var jobData = new JobData { DataModel = dataModel.DataModel, MyDataSources = dataSources };
-
-            LoggingHelper2.Debug("Final Data Model: " + JsonConvert.SerializeObject(dataModel.DataModel));
-            LoggingHelper2.Debug("Final Data Sources: " + JsonConvert.SerializeObject(dataSources));
-
+            var jobData = await this.helper.GetJobData(binding, entity);
+            
             this.helper.RunDatabus(config, jobData);
             return Convert.ToInt64(1);
         }

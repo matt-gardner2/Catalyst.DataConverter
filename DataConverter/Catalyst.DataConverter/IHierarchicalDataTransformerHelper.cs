@@ -25,6 +25,7 @@ namespace DataConverter
     /// </summary>
     public interface IHierarchicalDataTransformerHelper
     {
+        Task<JobData> GetJobData(Binding binding, Entity entity);
 
         /// <summary>
         /// The generate data model.

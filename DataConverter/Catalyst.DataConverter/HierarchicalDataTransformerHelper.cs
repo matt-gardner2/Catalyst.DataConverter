@@ -33,6 +33,7 @@ namespace DataConverter
     /// </summary>
     public class HierarchicalDataTransformerHelper : IHierarchicalDataTransformerHelper
     {
+
         /// <summary>
         /// The service client.
         /// </summary>
@@ -48,6 +49,116 @@ namespace DataConverter
         {
             LoggingHelper2.Debug("Entering the DataTransformerHelper");
             this.serviceClient = serviceClient;
+        }
+
+        public async Task<JobData> GetJobData(Binding binding, Entity destinationEntity)
+        {
+            var jobData = new JobData();
+
+            
+            var dataSources = await this.GetDataSources(binding, destinationEntity);
+            jobData.MyDataSources = dataSources;
+
+            return jobData;
+        }
+
+        private async Task Temp(Binding rootBinding, 
+                                Entity destinationEntity, 
+                                string path, 
+                                Binding[] allBindings, 
+                                List<DataSource> dataSources,
+                                ObjectReference relationshipToParent,
+                                bool isFirst)
+        {
+            var childObjectRelationships = this.GetChildObjectRelationships(rootBinding);
+            var hasChildren = childObjectRelationships.Count > 0;
+            if (!hasChildren)
+            {
+                return;
+            }
+
+            var sourceEntity = await this.GetEntityFromBinding(rootBinding);
+            var dataSource = new DataSource
+                                 {
+                                     Path = path,
+                                     TableOrView = this.GetFullyQualifiedTableName(sourceEntity),
+                                     MySqlEntityColumnMappings = await this.GetColumnsFromEntity(sourceEntity, destinationEntity),
+                                     PropertyType = isFirst ? null : this.GetCardinalityFromObjectReference(relationshipToParent)
+                                 };
+
+            if (!isFirst)
+            {
+                dataSource.MyRelationships = this.GetDatabusRelationships(rootBinding, allBindings);
+            }
+
+            foreach (var childObjectRelationship in childObjectRelationships)
+            {
+                if (childObjectRelationship != null)
+                {
+                    var childBinding = this.GetMatchingChild(allBindings, childObjectRelationship.ChildObjectId);
+                    var childIsObject = this.GetCardinalityFromObjectReference(childObjectRelationship) != "Array";
+                    await this.Temp(childBinding, destinationEntity, string.Join(".", path, this.GetSourceEntityAlias(childBinding)), allBindings, dataSources, childObjectRelationship, false);
+                }
+            }
+        }
+
+        private string GetFullyQualifiedTableName(object sourceEntity)
+        {
+            throw new NotImplementedException();
+        }
+
+        private List<SqlRelationship> GetDatabusRelationships(Binding rootBinding, Binding[] allBindings)
+        {
+            throw new NotImplementedException();
+        }
+
+        private string GetSourceEntityAlias(Binding childBinding)
+        {
+            throw new NotImplementedException();
+        }
+
+        private async Task<List<DataSource>> GetDataSources(Binding binding, Entity destinationEntity)
+        {
+            var dataSources = new List<DataSource>();
+            var entityBindings = await this.GetBindingsForEntityAsync(destinationEntity);
+            var isFirst = true;
+            foreach (var entityBinding in entityBindings)
+            {
+                var relationships = new List<SqlRelationship>();
+                var objectReferences = this.GetChildObjectRelationships(entityBinding);
+                foreach (var objectReference in objectReferences)
+                {
+                    // TODO: Get Entity from relationship - put the Source Entity and Key and Destination Entity and Key into the list.
+                    relationships.Add(new SqlRelationship
+                    {
+                        MyDestination = { Entity = " ", Key = " " },
+                        MySource = { Entity = " ", Key = " " }
+                    });
+                }
+
+                var columns = new List<SqlEntityColumnMapping>();
+                foreach (var field in destinationEntity.Fields)
+                {
+                    columns.Add(new SqlEntityColumnMapping
+                    {
+                        Alias = " ", // TODO: Get alias
+                        Name = field.FieldName
+                    });
+                }
+
+                dataSources.Add(
+                    new DataSource
+                    {
+                        Path = isFirst ? "$" : "$.", // TODO: Figure out whether this is the top level
+                        PropertyType = "array", // TODO: Figure this out? this.GetCardinalityFromObjectReference(childObjectRelationship) != "Array";
+                        TableOrView = $"{destinationEntity.EntityName}.{destinationEntity.TableName}",
+                        MyRelationships = relationships,
+                        MySqlEntityColumnMappings = columns
+                    });
+                isFirst = false;
+            }
+
+            return dataSources;
         }
 
         /// <summary>
@@ -96,11 +207,32 @@ namespace DataConverter
             var sourceEntity = await this.GetEntityFromBinding(tipBinding);
             if (sourceEntity != null)
             {
-                var sql = await this.GetSqlFromEntity(sourceEntity, destinationEntity);
+                var objectReferences = this.GetChildObjectRelationships(tipBinding);
+                var relationships = new List<SqlRelationship>();
+                foreach (var objectReference in objectReferences)
+                {
+                    // TODO: Get Entity from relationship - put the Source Entity and Key and Destination Entity and Key into the list.
+                }
+                var columns = new List<SqlEntityColumnMapping>();
+                foreach (var field in destinationEntity.Fields)
+                {
+                    columns.Add(new SqlEntityColumnMapping
+                                    {
+                                        Entity = " ", // TODO: Get Entity 
+                                        Alias = " ", //TODO: Get alias
+                                        Name = field.FieldName
+                                    });
+                }
 
-                sql = await this.AddKeyLevels(sql, depthMap, tipBinding, bindings, sourceEntity);
-
-                currentDataSources.Add(new DataSource { Path = sourceEntity.EntityName, Sql = sql });
+                currentDataSources.Add(
+                    new DataSource
+                        {
+                            Path = "$", // TODO: Figure out whether this is the top level
+                            PropertyType = "array", // TODO: Figure this out? this.GetCardinalityFromObjectReference(childObjectRelationship) != "Array";
+                            TableOrView = $"{destinationEntity.EntityName}.{destinationEntity.TableName}",
+                            MyRelationships = relationships,
+                            MySqlEntityColumnMappings = columns
+                    });
             }
 
             var bindingRelationships = tipBinding.ObjectRelationships.Where(x => x.ChildObjectType == "Binding").ToList();
@@ -128,11 +260,11 @@ namespace DataConverter
                 throw new InvalidOperationException("Could not get top most binding from a list with no bindings");
             }
 
-            return bindings.First(binding => !this.GetParentObjectRelationships(binding, bindings).Any());
+            return bindings.First(binding => !this.GetAncestorObjectRelationships(binding, bindings).Any());
         }
         
         /// <summary>
-        /// Get all bindings whose destination entity is the given entity
+        /// Get all bindings whose destination destinationEntity is the given destinationEntity
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
@@ -261,7 +393,7 @@ namespace DataConverter
             LoggingHelper2.Debug("keyleveldepth: " + JsonConvert.SerializeObject(keyleveldepth));
             LoggingHelper2.Debug("binding: " + JsonConvert.SerializeObject(binding));
             LoggingHelper2.Debug("bindings: " + JsonConvert.SerializeObject(bindings));
-            LoggingHelper2.Debug("entity: " + JsonConvert.SerializeObject(entity));
+            LoggingHelper2.Debug("destinationEntity: " + JsonConvert.SerializeObject(entity));
 
             var descendantObjectRelationships = this.GetDescendantObjectRelationships(binding);
 
@@ -283,7 +415,7 @@ namespace DataConverter
                 currentSqlString = await this.GetKeyLevelSql(myColumn, currentSqlString, myDepth, entity);
             }
 
-            var parentObjectReferences = this.GetParentObjectRelationships(binding, bindings);
+            var parentObjectReferences = this.GetAncestorObjectRelationships(binding, bindings);
             foreach (var bindingReference in parentObjectReferences)
             {
                 var depth = keyleveldepth.Where(x => x.Value.Contains(bindingReference.ParentObjectId))
@@ -306,14 +438,14 @@ namespace DataConverter
             LoggingHelper2.Debug($"keyFieldsString: {keyFieldsString}");
             LoggingHelper2.Debug($"originalSql: {originalSql}");
             LoggingHelper2.Debug($"depth: {depth}");
-            LoggingHelper2.Debug($"entity: {JsonConvert.SerializeObject(sourceEntity)}");
+            LoggingHelper2.Debug($"destinationEntity: {JsonConvert.SerializeObject(sourceEntity)}");
 
             var convertedToArray = keyFieldsString.Replace("[", string.Empty).Replace("]", string.Empty).Replace('"', ' ').Split(',');
             convertedToArray = convertedToArray.Select(x => x.Trim()).ToArray();
 
             Field[] sourceEntityFields = await this.serviceClient.GetEntityFieldsAsync(sourceEntity);
 
-            // make sure the column is in the source entity
+            // make sure the column is in the source destinationEntity
             foreach (var field in convertedToArray)
             {
                 if (sourceEntityFields.All(x => !string.Equals(x.FieldName, field, StringComparison.CurrentCultureIgnoreCase)))
@@ -429,9 +561,9 @@ namespace DataConverter
             return descendantRelationships;
         }
 
-        private List<BindingReference> GetParentObjectRelationships(Binding binding, Binding[] allBindings)
+        private List<BindingReference> GetAncestorObjectRelationships(Binding binding, Binding[] allBindings)
         {
-            LoggingHelper2.Debug("Entering GetParentObjectRelationships(...)");
+            LoggingHelper2.Debug("Entering GetAncestorObjectRelationships(...)");
             var parentRelationships = new List<BindingReference>();
             foreach (var otherBinding in allBindings)
             {
@@ -460,18 +592,15 @@ namespace DataConverter
             if (entityReference != null)
             {
                 var entity = await this.serviceClient.GetEntityAsync(entityReference.SourceEntityId);
-                LoggingHelper2.Debug($"Found source entity ({entity.EntityName}) for binding (id = {binding.Id})");
+                LoggingHelper2.Debug($"Found source destinationEntity ({entity.EntityName}) for binding (id = {binding.Id})");
                 return entity;
             }
 
             return null;
         }
 
-        private async Task<string> GetSqlFromEntity(Entity sourceEntity, Entity destinationEntity)
+        private async Task<List<SqlEntityColumnMapping>> GetColumnsFromEntity(Entity sourceEntity, Entity destinationEntity)
         {
-            LoggingHelper2.Debug("Entering GetSqlFromEntity");
-            LoggingHelper2.Debug($"sourceEntity: {JsonConvert.SerializeObject(sourceEntity)}");
-            LoggingHelper2.Debug($"destinationEntity: {JsonConvert.SerializeObject(destinationEntity)}");
 
             if (sourceEntity != null && destinationEntity != null)
             {
