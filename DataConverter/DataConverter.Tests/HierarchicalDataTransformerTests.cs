@@ -34,7 +34,7 @@ namespace UnitTestProject1
         /// <summary>
         /// The mock helper.
         /// </summary>
-        private Mock<IHierarchicalDataTransformerHelper> mockHelper;
+        //private Mock<IHierarchicalDataTransformerHelper> mockHelper;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HierarchicalDataTransformerTests"/> class.
