@@ -39,6 +39,7 @@ namespace DataConverter
         private readonly IMetadataServiceClient metadataServiceClient;
 
         private readonly Guid guid;
+        private readonly DatabusRunner runner;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="HierarchicalDataTransformer"/> class.
@@ -51,6 +52,7 @@ namespace DataConverter
             this.metadataServiceClient = metadataServiceClient ?? throw new ArgumentException("metadataServiceClient cannot be null.");
 
             this.guid = Guid.NewGuid();
+            this.runner = new DatabusRunner();
 
             LoggingHelper2.Debug(this.guid, "We Got Here: HierarchicalDataTransformer!");
         }
@@ -146,27 +148,27 @@ namespace DataConverter
         private QueryConfig GetQueryConfigFromJsonFile(string filePath = "config.json")
         {
             var json = System.IO.File.ReadAllText(filePath);
-            var deserialzed = (dynamic)JsonConvert.DeserializeObject(json);
+            var deserialized = (dynamic)JsonConvert.DeserializeObject(json);
 
             var queryConfig = new QueryConfig
                                   {
-                                      ConnectionString = deserialzed.ConnectionString,
-                                      Url = deserialzed.Url,
-                                      MaximumEntitiesToLoad = deserialzed.MaximumEntitiesToLoad,
-                                      EntitiesPerBatch = deserialzed.EntitiesPerBatch,
-                                      EntitiesPerUploadFile = deserialzed.EntitiesPerUploadFile,
-                                      LocalSaveFolder = deserialzed.LocalSaveFolder,
-                                      DropAndReloadIndex = deserialzed.DropAndReloadIndex,
-                                      WriteTemporaryFilesToDisk = deserialzed.WriteTemporaryFilesToDisk,
-                                      WriteDetailedTemporaryFilesToDisk = deserialzed.WriteDetailedTemporaryFilesToDisk,
-                                      CompressFiles = deserialzed.CompressFiles,
-                                      UploadToElasticSearch = deserialzed.UploadToElasticSearch,
-                                      Index = deserialzed.Index,
-                                      Alias = deserialzed.Alias,
-                                      EntityType = deserialzed.EntityType,
-                                      TopLevelKeyColumn = deserialzed.TopLevelKeyColumn,
-                                      UseMultipleThreads = deserialzed.UseMultipleThreads,
-                                      KeepTemporaryLookupColumnsInOutput = deserialzed.KeepTemporaryLookupColumnsInOutput,
+                                      ConnectionString = deserialized.ConnectionString,
+                                      Url = deserialized.Url,
+                                      MaximumEntitiesToLoad = deserialized.MaximumEntitiesToLoad,
+                                      EntitiesPerBatch = deserialized.EntitiesPerBatch,
+                                      EntitiesPerUploadFile = deserialized.EntitiesPerUploadFile,
+                                      LocalSaveFolder = deserialized.LocalSaveFolder,
+                                      DropAndReloadIndex = deserialized.DropAndReloadIndex,
+                                      WriteTemporaryFilesToDisk = deserialized.WriteTemporaryFilesToDisk,
+                                      WriteDetailedTemporaryFilesToDisk = deserialized.WriteDetailedTemporaryFilesToDisk,
+                                      CompressFiles = deserialized.CompressFiles,
+                                      UploadToElasticSearch = deserialized.UploadToElasticSearch,
+                                      Index = deserialized.Index,
+                                      Alias = deserialized.Alias,
+                                      EntityType = deserialized.EntityType,
+                                      TopLevelKeyColumn = deserialized.TopLevelKeyColumn,
+                                      UseMultipleThreads = deserialized.UseMultipleThreads,
+                                      KeepTemporaryLookupColumnsInOutput = deserialized.KeepTemporaryLookupColumnsInOutput,
                                   };
 
             return queryConfig;
@@ -204,8 +206,7 @@ namespace DataConverter
                           };
             try
             {
-                var runner = new DatabusRunner();
-                runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
+                this.runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
             }
             catch (Exception e)
             {
@@ -428,7 +429,7 @@ namespace DataConverter
 
         private string GetFullyQualifiedTableName(Entity sourceEntity)
         {
-            return $"[{sourceEntity.DatabaseName}].[{sourceEntity.SchemaName}].[{sourceEntity.TableName}]";
+            return $"[{sourceEntity.DatabaseName}].[{sourceEntity.SchemaName}].[{sourceEntity.EntityName}]";
         }
 
         private string CleanJson(string dirty)
