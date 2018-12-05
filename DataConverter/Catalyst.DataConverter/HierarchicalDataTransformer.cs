@@ -421,7 +421,7 @@ namespace DataConverter
                 sourceEntityFields
                     .Where(
                         field => destinationEntity.Fields.Any(
-                            destinationField => destinationField.FieldName == $"{sourceEntity.EntityName}_{field.FieldName}" && destinationField.Status != FieldStatus.Omitted))
+                            destinationField => destinationField.FieldName == $"{sourceEntity.EntityName}__{field.FieldName}" && destinationField.Status != FieldStatus.Omitted))
                     .Select(f => new SqlEntityColumnMapping { Name = f.FieldName, Alias = entityAlias ?? f.FieldName }));
 
             return columns;
