@@ -23,6 +23,7 @@ namespace DataConverter
 
     using Fabric.Databus.Client;
     using Fabric.Databus.Config;
+    using Fabric.Databus.Interfaces.Http;
 
     using Newtonsoft.Json;
 
@@ -162,7 +163,7 @@ namespace DataConverter
                                       WriteTemporaryFilesToDisk = deserialized.WriteTemporaryFilesToDisk,
                                       WriteDetailedTemporaryFilesToDisk = deserialized.WriteDetailedTemporaryFilesToDisk,
                                       CompressFiles = deserialized.CompressFiles,
-                                      UploadToElasticSearch = deserialized.UploadToElasticSearch,
+                                      UploadToUrl = deserialized.UploadToUrl,
                                       Index = deserialized.Index,
                                       Alias = deserialized.Alias,
                                       EntityType = deserialized.EntityType,
@@ -206,7 +207,11 @@ namespace DataConverter
                           };
             try
             {
-                this.runner.RunRestApiPipeline(new UnityContainer(), job, new CancellationToken());
+                // TODO: Get the authentication appId and secret from the database
+                var container = new UnityContainer();
+                container.RegisterInstance<IHttpRequestInterceptor>(new HmacAuthorizationRequestInterceptor(string.Empty, string.Empty));
+
+                this.runner.RunRestApiPipeline(container, job, new CancellationToken());
             }
             catch (Exception e)
             {
