@@ -90,7 +90,7 @@ namespace DataConverter
                 var jobData = await this.GetJobData(binding, entity);
                 LoggingHelper2.Debug(this.guid, $"JobData: {JsonConvert.SerializeObject(jobData)}");
 
-                // this.RunDatabus(config, jobData);
+                this.RunDatabus(config, jobData);
             }
             catch (Exception e)
             {
@@ -255,7 +255,7 @@ namespace DataConverter
                         MySqlEntityColumnMappings =
                             await this.GetColumnsFromEntity(sourceEntity, destinationEntity, rootBinding.SourcedByEntities.First().SourceAliasName),
                         PropertyType = isFirst ? null : this.GetCardinalityFromObjectReference(relationshipToParent),
-                        MyRelationships = isFirst ? null : await this.GetDatabusRelationships(rootBinding, allBindings, sourceEntity)
+                        MyRelationships = isFirst ? new List<SqlRelationship>() : await this.GetDatabusRelationships(rootBinding, allBindings, sourceEntity)
                     });
 
             var childObjectRelationships = this.GetChildObjectRelationships(rootBinding);

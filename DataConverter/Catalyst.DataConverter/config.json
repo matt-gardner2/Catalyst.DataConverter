@@ -13,7 +13,7 @@
     'Index' : 'Patients2',
     'Alias' : 'patients',
     'EntityType' : 'patient',
-    'TopLevelKeyColumn' : 'KeyLevel0',
+    'TopLevelKeyColumn' : 'ParentId',
     'UseMultipleThreads' : false,
     'KeepTemporaryLookupColumnsInOutput' : true
 }
