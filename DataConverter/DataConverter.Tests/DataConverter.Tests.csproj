@@ -41,9 +41,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BasePipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\BasePipelineStep.dll</HintPath>
-    </Reference>
     <Reference Include="Castle.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=407dd0808d44fbdc, processorArchitecture=MSIL">
       <HintPath>..\packages\Castle.Core.4.3.1\lib\net45\Castle.Core.dll</HintPath>
     </Reference>
@@ -59,65 +56,59 @@
     <Reference Include="CommonServiceLocator, Version=2.0.4.0, Culture=neutral, PublicKeyToken=489b6accfaf20ef0, processorArchitecture=MSIL">
       <HintPath>..\packages\Unity.5.8.11\lib\net46\CommonServiceLocator.dll</HintPath>
     </Reference>
-    <Reference Include="CreateBatchItemsPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\CreateBatchItemsPipelineStep.dll</HintPath>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
-    <Reference Include="DummyMappingUploadPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\DummyMappingUploadPipelineStep.dll</HintPath>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.2.0\lib\net45\EntityFramework.SqlServer.dll</HintPath>
     </Reference>
-    <Reference Include="Fabric.Databus.Client, Version=1.1.18334.2, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Client.dll</HintPath>
+    <Reference Include="Fabric.Databus.Client, Version=1.1.18339.9, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Client.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Config, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Config.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Config.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Domain, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Domain.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Domain.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.ElasticSearch, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.ElasticSearch.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.ElasticSearch.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Http, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Http.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Http.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Interfaces, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Interfaces.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Interfaces.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Json, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Json.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Json.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.PipelineRunner, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.PipelineRunner.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.PipelineRunner.dll</HintPath>
+    </Reference>
+    <Reference Include="Fabric.Databus.PipelineSteps, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.PipelineSteps.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.ProgressMonitors, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.ProgressMonitors.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.ProgressMonitors.dll</HintPath>
+    </Reference>
+    <Reference Include="Fabric.Databus.QueueItems, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.QueueItems.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Schema, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Schema.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Schema.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Shared.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.Shared.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.SqlGenerator, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.SqlGenerator.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.SqlGenerator.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Databus.ZipCodeToGeoCode, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.ZipCodeToGeoCode.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Databus.ZipCodeToGeoCode.dll</HintPath>
     </Reference>
     <Reference Include="Fabric.Shared, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Shared.dll</HintPath>
-    </Reference>
-    <Reference Include="FileSavePipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\FileSavePipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="FileUploadPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\FileUploadPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="JsonDocumentMergerPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\JsonDocumentMergerPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="MappingUploadPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\MappingUploadPipelineStep.dll</HintPath>
+      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18339.9\lib\netstandard2.0\bin\Release\netstandard2.0\Fabric.Shared.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualStudio.TestPlatform.TestFramework, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -129,23 +120,8 @@
     <Reference Include="Moq, Version=4.10.0.0, Culture=neutral, PublicKeyToken=69f491c39445e920, processorArchitecture=MSIL">
       <HintPath>..\packages\Moq.4.10.0\lib\net45\Moq.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="QueueItems, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\QueueItems.dll</HintPath>
-    </Reference>
-    <Reference Include="SaveBatchPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SaveBatchPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="SaveJsonToFilePipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SaveJsonToFilePipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="SaveSchemaPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SaveSchemaPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="SendToRestApiPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SendToRestApiPipelineStep.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.12.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Serilog, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
       <HintPath>..\packages\Serilog.2.7.1\lib\net46\Serilog.dll</HintPath>
@@ -153,19 +129,8 @@
     <Reference Include="Serilog.Sinks.File, Version=2.0.0.0, Culture=neutral, PublicKeyToken=24c2f752a8e58a10, processorArchitecture=MSIL">
       <HintPath>..\packages\Serilog.Sinks.File.4.0.0\lib\net45\Serilog.Sinks.File.dll</HintPath>
     </Reference>
-    <Reference Include="SqlBatchPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SqlBatchPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="SqlGetSchemaPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SqlGetSchemaPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="SqlImportPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SqlImportPipelineStep.dll</HintPath>
-    </Reference>
-    <Reference Include="SqlJobPipelineStep, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Catalyst.Fabric.Databus.Client.1.1.18334.2\lib\netstandard2.0\bin\Release\netstandard2.0\SqlJobPipelineStep.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Configuration.ConfigurationManager, Version=4.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Configuration.ConfigurationManager.4.4.1\lib\net461\System.Configuration.ConfigurationManager.dll</HintPath>
@@ -174,6 +139,15 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Data.SqlClient, Version=4.4.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Data.SqlClient.4.5.1\lib\net461\System.Data.SqlClient.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.SQLite, Version=1.0.109.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Data.SQLite.Core.1.0.109.2\lib\net46\System.Data.SQLite.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.SQLite.EF6, Version=1.0.109.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Data.SQLite.EF6.1.0.109.0\lib\net46\System.Data.SQLite.EF6.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.SQLite.Linq, Version=1.0.109.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Data.SQLite.Linq.1.0.109.0\lib\net46\System.Data.SQLite.Linq.dll</HintPath>
     </Reference>
     <Reference Include="System.Threading.Tasks.Extensions, Version=4.1.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Threading.Tasks.Extensions.4.3.0\lib\portable-net45+win8+wp8+wpa81\System.Threading.Tasks.Extensions.dll</HintPath>
@@ -219,6 +193,7 @@
   <ItemGroup>
     <Compile Include="HierarchicalDataTransformerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RequestInterceptorTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
@@ -233,6 +208,9 @@
       <Name>Catalyst.DataConverter</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="SingleEntity.xml" />
+  </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -244,7 +222,9 @@
     <Error Condition="!Exists('..\packages\xunit.runner.console.2.4.1\build\xunit.runner.console.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\xunit.runner.console.2.4.1\build\xunit.runner.console.props'))" />
     <Error Condition="!Exists('..\packages\xunit.core.2.4.1\build\xunit.core.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\xunit.core.2.4.1\build\xunit.core.props'))" />
     <Error Condition="!Exists('..\packages\xunit.core.2.4.1\build\xunit.core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\xunit.core.2.4.1\build\xunit.core.targets'))" />
+    <Error Condition="!Exists('..\packages\System.Data.SQLite.Core.1.0.109.2\build\net46\System.Data.SQLite.Core.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Data.SQLite.Core.1.0.109.2\build\net46\System.Data.SQLite.Core.targets'))" />
   </Target>
   <Import Project="..\packages\MSTest.TestAdapter.1.3.2\build\net45\MSTest.TestAdapter.targets" Condition="Exists('..\packages\MSTest.TestAdapter.1.3.2\build\net45\MSTest.TestAdapter.targets')" />
   <Import Project="..\packages\xunit.core.2.4.1\build\xunit.core.targets" Condition="Exists('..\packages\xunit.core.2.4.1\build\xunit.core.targets')" />
+  <Import Project="..\packages\System.Data.SQLite.Core.1.0.109.2\build\net46\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.109.2\build\net46\System.Data.SQLite.Core.targets')" />
 </Project>
