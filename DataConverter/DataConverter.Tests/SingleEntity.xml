@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Job xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:noNamespaceSchemaLocation="..\..\Fabric.Databus.Config\Fabric.Databus.Config.xsd">
+    <Config>
+        <ConnectionString>Data Source=:memory:</ConnectionString>
+        <Url>https://stg.api.neutrino.upmce.net/api/v1/patient_document/5?user[root]=UserRoot&amp;user[extension]=UserExtension&amp;tid=healthcatalyst_phi</Url>
+        <LocalSaveFolder>foo</LocalSaveFolder>
+        <UseMultipleThreads>false</UseMultipleThreads>
+        <UrlUserName>myUser</UrlUserName>
+        <UrlPassword>myPassword</UrlPassword>
+        <UrlMethod>Put</UrlMethod>
+    </Config>
+    <Data>
+        <TopLevelDataSource Key="TextID" Path="$" Name="First" TableOrView="Text">
+        </TopLevelDataSource>
+    </Data>
+</Job>

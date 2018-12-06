@@ -13,12 +13,18 @@ namespace DataConverter
     {
         private readonly string appId;
 
-        private readonly string secret;
+        private readonly string appSecretKey;
 
-        public HmacAuthorizationRequestInterceptor(string appId, string secret)
+        private readonly string tenantId;
+
+        private readonly string tenantSecretKey;
+
+        public HmacAuthorizationRequestInterceptor(string appId, string appSecretKey, string tenantId, string tenantSecretKey)
         {
             this.appId = appId;
-            this.secret = secret;
+            this.appSecretKey = appSecretKey;
+            this.tenantId = tenantId;
+            this.tenantSecretKey = tenantSecretKey;
         }
 
         public void InterceptRequest(HttpMethod method, HttpRequestMessage request)
@@ -78,6 +84,24 @@ namespace DataConverter
             return finalizedAuthHeader;
         }
 
+        private string CalculateSecret(string appSecret, string tenantSecret)
+        {
+            string newSecret = null;
+            SHA512 shah512 = SHA512.Create();
+            byte[] appSecretBytes = Convert.FromBase64String(appSecret);
+            byte[] tenantSecretBytes = Convert.FromBase64String(tenantSecret);
+
+            if ((tenantSecretBytes != null) && (tenantSecretBytes.Length != 0))
+            {
+                byte[] newSecretBytes = new byte[appSecretBytes.Length + tenantSecretBytes.Length];
+                Buffer.BlockCopy(appSecretBytes, 0, newSecretBytes, 0, appSecretBytes.Length);
+                Buffer.BlockCopy(tenantSecretBytes, 0, newSecretBytes, appSecretBytes.Length, tenantSecretBytes.Length);
+                byte[] newSecretSha = shah512.ComputeHash(newSecretBytes);
+                newSecret = Convert.ToBase64String(newSecretSha);
+            }
+            return newSecret;
+        }
+
         private string GetCanonicalString(string contentType, string bodyMd5, string url, DateTime timestamp)
         {
             var timestampFormatted = $"{timestamp:R}"; 
@@ -91,7 +115,8 @@ namespace DataConverter
 
         private string GetHmac(byte[] valueBytes)
         {
-            if (string.IsNullOrEmpty(this.secret))
+            var secret = this.CalculateSecret(this.appSecretKey, this.tenantSecretKey);
+            if (string.IsNullOrEmpty(secret))
             {
                 throw new ArgumentException("Expected private key not found!");
             }
@@ -100,7 +125,7 @@ namespace DataConverter
                 throw new ArgumentException("Expected value to encrypt not found!");
             }
 
-            var secretBytes = Convert.FromBase64String(this.secret);
+            var secretBytes = Convert.FromBase64String(secret);
             string signature;
 
             using (var hmac = new HMACSHA1(secretBytes))
