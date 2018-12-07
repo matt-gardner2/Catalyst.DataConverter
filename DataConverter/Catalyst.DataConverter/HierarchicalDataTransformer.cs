@@ -55,7 +55,7 @@ namespace DataConverter
             this.guid = Guid.NewGuid();
             this.runner = new DatabusRunner();
 
-            LoggingHelper2.Debug(this.guid, "We Got Here: HierarchicalDataTransformer!");
+            LoggingHelper2.Debug(this.guid, "Created HierarchicalDataTransformer instance");
         }
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace DataConverter
                 var jobData = await this.GetJobData(binding, entity);
                 LoggingHelper2.Debug(this.guid, $"JobData: {JsonConvert.SerializeObject(jobData)}");
 
-                // this.RunDatabus(config, jobData);
+                this.RunDatabus(config, jobData);
             }
             catch (Exception e)
             {
@@ -110,8 +110,6 @@ namespace DataConverter
         /// <returns></returns>
         public bool CanHandle(BindingExecution bindingExecution, Binding binding, Entity destinationEntity)
         {
-            //LoggingHelper2.Debug(this.guid, "We got to the CanHandle Method");
-
             var guid2 = Guid.NewGuid();
 
             Binding topMost;
@@ -119,10 +117,6 @@ namespace DataConverter
             {
                 Binding[] allBindings = this.GetBindingsForEntityAsync(destinationEntity).Result;
                 topMost = this.GetTopMostBinding(allBindings);
-                //LoggingHelper2.Debug(this.guid, $"All bindings ({guid2.ToString().Substring(0, 10)}): {JsonConvert.SerializeObject(allBindings)}");
-                //LoggingHelper2.Debug(this.guid, $"binding ({guid2.ToString().Substring(0, 10)}): {JsonConvert.SerializeObject(binding)}");
-                //LoggingHelper2.Debug(this.guid, $"TopMost ({guid2.ToString().Substring(0, 10)}): {JsonConvert.SerializeObject(topMost)}");
-                //LoggingHelper2.Debug(this.guid, $"Is topmost?? ({guid2.ToString().Substring(0, 10)}): {binding.Id == topMost.Id}");
             }
             catch (Exception e)
             {
@@ -208,7 +202,7 @@ namespace DataConverter
             {
                 // TODO: Get the authentication appId and secret from the database
                 var container = new UnityContainer();
-                container.RegisterInstance<IHttpRequestInterceptor>(new HmacAuthorizationRequestInterceptor(string.Empty, string.Empty, string.Empty, string.Empty));
+                //container.RegisterInstance<IHttpRequestInterceptor>(new HmacAuthorizationRequestInterceptor(string.Empty, string.Empty, string.Empty, string.Empty));
 
                 this.runner.RunRestApiPipeline(container, job, new CancellationToken());
             }
@@ -257,7 +251,7 @@ namespace DataConverter
                         Path = path,
                         TableOrView = this.GetFullyQualifiedTableName(sourceEntity),
                         MySqlEntityColumnMappings =
-                            await this.GetColumnsFromEntity(sourceEntity, destinationEntity, rootBinding.SourcedByEntities.First().SourceAliasName),
+                            await this.GetColumnsFromEntity(sourceEntity, destinationEntity),
                         PropertyType = isFirst ? null : this.GetCardinalityFromObjectReference(relationshipToParent),
                         MyRelationships = isFirst ? null : await this.GetDatabusRelationships(rootBinding, allBindings, sourceEntity)
                     });
@@ -409,7 +403,7 @@ namespace DataConverter
             return entity;
         }
 
-        private async Task<List<SqlEntityColumnMapping>> GetColumnsFromEntity(Entity sourceEntity, Entity destinationEntity, string entityAlias)
+        private async Task<List<SqlEntityColumnMapping>> GetColumnsFromEntity(Entity sourceEntity, Entity destinationEntity)
         {
             if (sourceEntity == null || destinationEntity == null)
             {
@@ -426,7 +420,7 @@ namespace DataConverter
                     .Where(
                         field => destinationEntity.Fields.Any(
                             destinationField => destinationField.FieldName == $"{sourceEntity.EntityName}_{field.FieldName}" && destinationField.Status != FieldStatus.Omitted))
-                    .Select(f => new SqlEntityColumnMapping { Name = f.FieldName, Alias = entityAlias ?? f.FieldName }));
+                    .Select(f => new SqlEntityColumnMapping { Name = f.FieldName }));
 
             return columns;
         }
